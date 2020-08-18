@@ -18,12 +18,12 @@ https://www.aeaweb.org/articles?id=10.1257/pol.20170144
 
 RTutor and this package is hosted on Github. To install everything, run the following code in your R console.
 ```s
-install.packages("RTutor",repos = c("https://skranz-repo.github.io/drat/",getOption("repos")))
-
 if (!require(devtools))
   install.packages("devtools")
+source_gist("gist.github.com/skranz/fad6062e5462c9d0efe4")
+install.rtutor(update.github=TRUE)
 
-devtools::install_github("TheresaGraefe/RTutorCarbonTaxesAndCO2Emissions", upgrade_dependencies=FALSE)
+devtools::install_github("TheresaGraefe/RTutorCarbonTaxesAndCO2Emissions")
 ```
 
 ## 2. Show and work on the problem set
@@ -32,9 +32,9 @@ To start the problem set first create a working directory in which files like th
 library(RTutorCarbonTaxesAndCO2Emissions)
 
 # Adapt your working directory to an existing folder
-setwd("C:/problemsets/RTutorCarbonTaxesAndCO2Emissions")
+setwd("C:/problemsets/RTutorSoapOperas")
 # Adapt your user name
 run.ps(user.name="Jon Doe", package="RTutorCarbonTaxesAndCO2Emissions",
-       auto.save.code=TRUE, clear.user=FALSE)
+       load.sav=TRUE, sample.solution=FALSE)
 ```
 If everything works fine, a browser window should open, in which you can start exploring the problem set.
