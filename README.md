@@ -32,7 +32,7 @@ To start the problem set first create a working directory in which files like th
 library(RTutorCarbonTaxesAndCO2Emissions)
 
 # Adapt your working directory to an existing folder
-setwd("C:/problemsets/RTutorSoapOperas")
+setwd("C:/problemsets/RTutorCarbonTaxes")
 # Adapt your user name
 run.ps(user.name="Jon Doe", package="RTutorCarbonTaxesAndCO2Emissions",
        load.sav=TRUE, sample.solution=FALSE)
