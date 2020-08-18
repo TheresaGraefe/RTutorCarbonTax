@@ -1,0 +1,2290 @@
+#< ignore
+
+```{r setup}
+library(RTutor)
+# Adapt the working directory below and then run setup chunk in RStudio.
+#setwd("~/Masterarbeit/Replizierter Code/Rmarkdown")
+ps.name = "CarbonTaxesAndCO2Emissions"; sol.file = paste0(ps.name,"_sol.Rmd")
+libs = c("ggplot2","dplyr","foreign","lfe","stargazer", "Synth","SCtools","lmtest","sandwich", "gridExtra", "AER")
+# character vector of all packages you load in the problem set
+#name.rmd.chunks(sol.file)
+create.ps(sol.file=sol.file, ps.name=ps.name, libs=libs, rps.has.sol = FALSE, addons = "quiz")
+show.ps(ps.name,sample.solution = TRUE)
+```
+#>
+
+## Exercise Overview
+
+Welcome!
+You are about to begin an interactive RTutor problem set which is part of my master thesis at Ulm University. It is based on the paper *Carbon Taxes and CO2 Emissions: Sweden as a case study* from Julius J. Andersson which was published in the "American Economic Policy" in 2019. The article can be downloaded <a href="https://www.aeaweb.org/articles?id=10.1257/pol.20170144" target="_blank">here</a>.
+
+### Content
+
+Sweden established a carbon tax in 1991 as part of a major energy tax reform in 1990/1991. It was one of the first countries that implemented a tax for carbon dioxide and today is the one that has the highest carbon tax in the world (cf. Kossoy et al., 2015, p.13). In 2013 the Swedish transport sector emitted 18.5 million tons of CO2 equivalents. It thus accounted for around one-third of total greenhouse gas emissions in Sweden. The main part of those emissions was due to road transport which accounted for 17 million tons of CO2 equivalents (cf. Swedish Environmental Protection Agency, 2015, p.9, 14 f.). 
+
+In this RTutor Problem set, we will empirically analyse the effects of a carbon tax on the consumption of fuel and thus on per capita CO2 emissions from transport. Therefore, we will begin with some graphical analyses of gasoline prices and taxes. Afterwards, we search for an estimator of the effects of the energy tax reform on emissions. Therefore, we will get to know several methods that try to estimate causal effects and discuss how good those estimations are. We as well will explore the synthetic control method, which builds a synthetic Sweden from a group of OECD countries that allows the estimation of Swedish CO2 emissions without the tax interventions. As well, we will analyse whether economic development influenced carbon emissions. As the energy tax reform affected the gasoline prices (and thus gasoline consumption) by adding a carbon tax and a value-added tax, we will finish our analysis by disentangling the effects of both to find the carbon tax elasticity. Hence, we will analyse if, and how the carbon tax affected per capita CO2 emissions from transport in Sweden.
+
+### Content  
+
+The problem set has the following structure:
+
+**Exercise 1: Descriptive Overview**
+
+1.1 Gasoline Price Components
+
+1.2 Gasoline consumption and CO2 emissions
+
+**Exercise 2: Estimating causal effects**
+
+2.1 Differences-in-Differences
+
+2.2 Synthetic control method - background 
+
+2.3 Synthetic control method - Sweden
+
+2.4	 Placebo studies
+
+**Exercise 3: Swedish Economy**
+
+3.1 Is GDP a relevant confounder?
+
+3.2 Effects from carbon tax on GDP
+
+
+**Exercise 4: Tax incidences and elasticities**
+
+4.1 Gasoline consumption regression - OLS
+
+4.2 Gasoline consumption regression - IV
+
+4.3 Disentangling carbon tax and VAT
+
+**Exercise 5:	Conclusion**
+
+**6: References**
+
+You don't have to solve the exercises in the given order but it is recommended to do so since later exercises expect earlier received knowledge from you.
+
+Within one tab you need to solve the tasks in the given order. When you begin a new tab, click *edit* to start the exercise. Then you can enter your code.  To check your solution and run the code press *check*. If you don't know how to start or your checked solution is not correct, you can press *hint* for advice. As well you have the possibility to just press *solution* for the sample solution. To test your knowledge acquired by solving the problem set, some quizzes are included and you can earn awards.
+
+Have fun at solving the tasks and at collecting awards.
+
+## Exercise 1  Descriptive Overview
+
+The data frame used during this exercise is called `descr_Sweden.Rds`. The author originally provides a different file `descriptive_data.dat` (it can be found <a href="https://www.aeaweb.org/articles?id=10.1257/pol.20170144" target="_blank">here</a>). I decided to rename some variables to shorten the code and saved the new file in `Rds` format. Have a look at the R file in the <a href="https://github.com/TheresaGraefe/RTutorCarbonTax" target="_blank">Github repository</a> if you are interested in the code of the adaptions.
+
+Before we can work with the data, we have to load it.
+Use the `readRDS()` command to load the `descr_Sweden.Rds` file and assign it to the variable `dat`.
+
+```{r}
+#< task
+# Load descr_Sweden.Rds into the variable dat. Enter your code here:
+#>
+dat=readRDS("descr_Sweden.Rds")
+```
+
+After loading the data into `dat`, we can have a closer look at the information stored in `dat`. An easy way to get familiar with the variables stored in a data frame is the command `head()`. It shows the first part of the data.
+
+Use the `head()` command to show the first 6 rows of the data frame `dat`.
+```{r}
+#< task
+# Use head() to have a look at dat. Enter your code here:
+#>
+head(dat)
+```
+
+You can see six rows of `dat` where each row represents a year between 1960 and 2005. For every year the data frame stores 13 variables with their names given at the top:
+
+- The data frame provides information about the *real* Swedish tax rates (reference year 2005). `VAT` is the real value-added tax, `en_tax` stands for real energy tax, `CO2_tax` for real carbon tax, and `total_tax` for real total tax rates.
+
+- `pw_real` is the *real* wholesale net price for gasoline consumption (without taxes, reference year 2005). The prices and tax elements are given in SEK and taken from **Statistics Sweden**, the **Swedish Tax Agency**, and **Svenska Petroleum och Biodrivmedel Institutet (SPBI)**. 
+
+- `CO2_OECD` describes the per capita CO2 emissions from transport for 15 OECD countries (Sweden included) and `CO2_Sweden` gives the same information for Sweden only. As well as data on gasoline consumption (`gas_cons`) and diesel consumption (`diesel_cons`) it is obtained from the **World Bank**. 
+
+We will have a look at the rest of the columns later as they are not relevant for this exercise. Another possibility to take a look at the data is the `sample_n()` command. Use `sample_n` to show 5 random rows of `dat`. The command randomly chooses entries from your data frame. For five rows, you have to call `sample_n(data, 5)`. The number after the`,` specifies how many rows are shown. 
+
+```{r}
+#< task
+#Use sample_n() to show a random sample of dat. Enter your code here:
+#>
+sample_n(dat,5)
+```
+
+You generated a sample with 5 randomly chosen years. As you see there are some years with the energy tax only, some years with energy tax and VAT and some years with energy tax, VAT, and carbon tax.
+
+#< award "first glance at the data"
+Well done, you now know how to have a look at the data with head and sample_n.
+#>
+
+Go on with the next exercise to learn more about gasoline prices, consumption, and CO2 emissions.
+
+
+## Exercise 1.1 Gasoline Price Components
+In the following exercises, we want to graphically analyse gasoline prices, gasoline consumption, and CO2 emissions from transport in Sweden. First of all, we need to load the required data again. We use the same data frame as in the exercise before. To read in `descr_Sweden.Rds` and assign it to `dat`, just press **edit** and **check**.
+```{r}
+#< task
+# Load descr_Sweden.Rds into dat
+  dat=readRDS("descr_Sweden.Rds")
+#>
+```
+
+Let's have have a closer look at the gasoline price components. The given data begins in the year 1960 and ends in 2005. The prices are real prices with 2005 as reference year. As we only need information about prices and tax rates for the next exercise, we will remove some columns from the data frame. 
+
+Therefore, we can use the `select()` command. Generate a new data frame `dat_sub` of `dat`, keeping the variables `year`, `pw_real`, `CO2_tax`, `VAT`, `en_tax`, and `total_tax`. Then show the head of `dat_sub`.
+
+#< info "select()"
+
+The `select()` command from the `dplyr` package allows to build a new data frame with a subset of the original columns. It offers the possibility to filter for columns.
+
+Here is an example `dat_subset = select(dat, variable1, variable2)`
+The data frame `dat_subset` now only consists of the chosen variables, whereas all the other variables of our original data frame were omitted. If you want to remove individual variables use `-variable`.
+
+#>
+
+```{r}
+#< task
+#load dplyr package
+library(dplyr)
+#Use select() to build a new data frame and store it in dat_sub. Enter your code here:
+#>
+dat_sub = select(dat, year, pw_real, CO2_tax, VAT, en_tax, total_tax)
+head(dat_sub)
+```
+Well done. The data frame now only contains real gasoline prices and real tax rates. We are ready to do some plots now. Let's start with an easy plot that shows the development of the gasoline prices in Sweden from 1960 until 2005. R offers a nice package for graphics that is called `ggplot2`. Have a look at the info box below to learn more about it.
+
+#< info "package ggplot2"
+
+The package `ggplot2` provides tools and functions for creating high-quality graphics in R. It is based on a layered grammar of graphics. Possible components are scales, coordinate systems, faceting, aesthetics, geometry, etc. The notation is simple: every layer is added with a `+`. Here is a short introduction to the functions that we will need for the plots in this problemset:
+
+`ggplot()` initializes a new plot object. You can specify the data frame and the aesthetics which are the base for all other layers.
+
+By `data`, we specify the input data frame for the graphic.
+With `aes()` the plot aesthetics are determined. In our case, we specify the variables that should be mapped on the x- and y-axes by x and y (e. g. `aes(x=year)`)
+
+Several layers can be generated by ggplot. The most common are `geom_bar`, `geom_point`, and `geom_line`. The last one adds a line to the plot based on the unit of the y-axis. 
+
+The functions `xlab()` and `ylab()` are used for adding text labels to the respective axes.
+
+You can find more detailed descriptions and many more functions at https://cran.r-project.org/web/packages/ggplot2/ggplot2.pdf.
+
+#>
+
+To get familiar with the way `ggplot` works, in this first example the code is provided. We plot the development of the **real gasoline price** `pw_real` in Sweden from 1960-2005. Press *check* to run the code. 
+```{r dev="svg"}
+#< task
+#first load the package ggplot2
+library(ggplot2)
+#assign data to axes
+ggplot(data=dat_sub, aes(x =year, y=pw_real))+
+#add the line, assign the colour blue, and attach a label to the y-axis
+geom_line(colour = "blue") + labs(y="Real gasoline wholesale price (SEK/liter)")
+#>
+
+```
+
+After calling the `ggplot` package with `library()` we can start to write the code. At first, we need to tell the function which data it has to use (`dat_sub`) and which variables belong to the axes (`aes(x=...,y=...)`). In this example, we want to plot `year` on the x-axis and the gasoline price `pw_real` on the y-axis, so we write `(aes(x=year, y=pw_real))`. With the `+` sign we can add functions to the background. Here we want to add a line with the command `geom_line()`. Additionally, we change the colour to blue with `colour = "blue"`. Finally, we add a label to the y-axis with `labs(y="Real gasoline wholsesale price (SEK/liter)")`. 
+
+The resulting figure plots the development of the real net gasoline price, which is the inflation-adjusted price for the wholesale market. As you can see it was not constant over the years between 1960 and 2005. In 1960 one had to pay nearly $7.50\ SEK$ per liter. The real price fell to less than $6\ SEK/l$ in 1970 and rose with some highs and lows to more than $11\ SEK/l$ in 2005. 
+
+The data ends in 2005, 15 years ago. Between 1960 and 2005 the price increased by $46 \%$. So here is a quiz for you. Just make a guess: 
+
+#< quiz "Gasoline price development"
+question: How did the gasoline price develop between 2005 and 2020?
+sc:
+- It increased at a similar rate of around 45%*
+- It increased at a higher rate of around 63%
+- It increased at a smaller rate of around 18%
+success: Well done. The gasoline price on January 15, 2020 was 15.99 SEK per liter. It increased by around 45%.
+failure: Try again.
+#>
+
+### Tax elements
+
+You just explored how to use the `ggplot` function in an easy example with only one graph which showed the gasoline price development. In the following chunks, we want to add - step by step - the different tax elements that affect the retail price of gasoline. Let's start with the real **energy tax**. Again we plot `year` on the x-axis. But now we add two lines: `pw_real` and `en_tax`.  Fill in the right values for the placeholders below. With `scale_color_manual` we assign colours to our plots.
+
+```{r dev="svg"}
+#< fill_in
+# ggplot(data=dat, aes (x = ___)) +
+#   geom_line(aes(y=___, colour ="Real wholesale price")) +
+#   geom_line(aes(y=en_tax, colour = "Energy tax")) +
+#   labs(y="Real prices (SEK/liter)")+
+#  scale_color_manual(values = c("Real wholesale price" = "blue", "Energy tax" = "orange"))
+#>
+# sample solution
+ggplot(data=dat_sub, aes (x = year)) +
+  geom_line(aes(y=pw_real, colour = "Real wholesale price")) +
+  geom_line(aes(y=en_tax, colour = "Energy tax")) +
+  labs(y="Real prices (SEK/liter)")+
+  scale_color_manual(values = c("Real wholesale price" = "blue", "Energy tax" = "orange"))
+```
+
+Sweden already established an energy tax around 1930 on gasoline and diesel. Heating fuels started to be taxed around 1950. In 1960 the tax rate was $4.13\ SEK$ per liter of gasoline. The energy tax burden is set based on the energy content in fossil fuels, and covers besides the transport sector, heating fuels for households, services, industry, and agriculture. In 1991 (with the introduction of the carbon tax) the energy tax rate on transport fuels was reduced by $50\%$ so that it lowered to $2.95\ SEK/l$ (cf. Akerfeldt and Hammar, 2015, p.1). In 2005 it was $2.85\ SEK/l$. In 2009 the energy tax was again restructured. The level was set at $0.085\ SEK/kWh$ on heating fuels for households, services, and district heating. The burden on heating fuels for industry, agriculture, and forestry was $0.026\ SEK/kWh$. Also for the transport sector, changes were made. Historically the energy tax rate for diesel has been lower than for gasoline. The Government of Sweden wanted to close the gap between the transport fuels and increased the energy tax for diesel $0.40\ SEK/l$ in 2013 and $0.53\ SEK/l$ in 2016. The energy tax increase on gasoline was $0.48\ SEK/l$ in 2016 (cf. Swedish Environmental Protection Agency, 2015, p.49 f.).
+
+Let us also have a look at the Swedish **carbon tax** on transport fuels which was implemented in 1991. Just press *check* to run the code. 
+```{r dev="svg"}
+#< task
+# Press check to run the code
+ggplot(data=dat_sub, aes (x = year)) +
+  geom_line(aes(y=pw_real, colour = "Real wholesale price")) +
+  geom_line(aes(y=en_tax, colour = "Energy tax")) +
+  geom_line(aes(y=CO2_tax, colour = "Carbon tax")) +
+  labs(y="Real prices (SEK/liter)")+
+  scale_color_manual(values = c("Real wholesale price" = "blue", "Energy tax" = "orange",  "Carbon tax" = "violet"))
+#>
+```
+
+Sweden already established the carbon tax in 1991 as part of the energy tax reform 1990/1991. It was one of the first countries worldwide that implemented a price for carbon dioxide. The tax was introduced at $250\ SEK$ ($23\ €$) per ton of CO2 emitted and has been increased to $908\ SEK$ ($84\ €$) per ton in 2005. Until 2020 it increased to  $1190\ SEK$ ($110\ €$) (cf. Government Offices of Sweden, 2020). The carbon tax influences the transport sector as vehicles emit carbon dioxide. E. g. the combustion of one liter of gasoline releases $2.323\ kg_{CO2}$. Hence, in 1991 one had to pay $0.25\ SEK$ ($0.02\ €$) per kg of CO2 which added around $0.58\ SEK$ ($0.06\ €$) to every liter of gasoline. In 2005 it already amounted to $2.11\ SEK/l$ ($0.22\ €/l$) (cf. Andersson, 2019, p.6). The transport sector is fully covered by the tax, which is important as it was responsible for around $40 \%$ of the annual Swedish CO2 emissions between 1990 and 2005. Also, the transport sector is not covered by the EU-Emission trading system (cf. Ackva and Hoppe, 2018, p.6)(currency conversion based on an exchange rate of SEK 10.80 per € in 2020).
+
+Kossoy et al. show that in 2015 Sweden had the highest carbon tax in the world with a nominal price of $130\ USD/t_{CO2}$ ($\sim119\ €$). It was followed by Finland with $64\ USD/t_{CO2}$ ($\sim58\ €$) (on transport fuels) and Switzerland with $62\ USD/t_{CO2}$ ($\sim 56,5\ €$). For comparison: the price of allowances in the EU-emission trading system was slightly below $9\ USD/t_{CO2}$ ($\sim 8,21€$) (cf. Kossoy et al., 2015, p.13) (currency conversion based on an echange rate of € 1.0967 per USD in 2015).
+
+The last tax element affecting the gasoline price is the value-added tax **VAT**. Press *check* to generate a plot that shows all price elements. (Note: As the year 1990 is quite important I added a vertical line with `geom_vline`).
+
+```{r dev="svg"}
+#< task
+# Run the code to plot all price elements
+ggplot(data=dat_sub, aes (x = year)) +
+  geom_line(aes(y=pw_real, colour ="Real wholesale price")) +
+  geom_line(aes(y=CO2_tax, colour ="Carbon Tax"))+
+  geom_line(aes(y=VAT, colour ="VAT"))+
+  geom_line(aes(y=en_tax, colour = "Energy tax")) +
+  geom_vline(xintercept=1990, linetype = "dotted")+
+  labs(y="Real prices (SEK/liter)")+
+  scale_color_manual(values = c("Real wholesale price" = "blue", "Carbon Tax" = "violet",   "VAT" = "brown", "Energy tax" = "orange"))
+#>
+```
+
+*This figure can be found on page 7 of Andersson's paper: Panel A. "Tax components"*
+
+Another part of the Swedish tax reform of 1990/1991 was the introduction of a value-added tax VAT on energy in 1990. In this year, Sweden extended the coverage of its VAT to include gasoline and diesel. In 2005 it added $25 \%$ to all price elements.
+
+We also want to know how much taxes one had to pay for one liter of gasoline in total. Fill in the right values for the placeholders to plot the real gasoline price and the real **total tax burden** `total_tax`.
+```{r dev="svg"}
+#< fill_in
+#ggplot(___) +
+#  geom_line(aes(___, colour ="Real wholesale price")) +
+#  geom_line(aes(___, colour ="Total tax")) + 
+#  geom_vline(xintercept=1990, linetype = "dotted")+
+#  labs(y="Real prices (SEK/liter)")+
+#   scale_color_manual(values = c("Real wholesale price" = "blue", "Total tax" ="magenta"))
+#>
+# sample solution
+ggplot(data=dat_sub, aes(x=year)) +
+  geom_line(aes(y=pw_real, colour ="Real wholesale price")) +
+  geom_line(aes(y=total_tax, colour ="Total tax")) + 
+  geom_vline(xintercept=1990, linetype = "dotted")+
+  labs(y="Real prices (SEK/liter)")+
+   scale_color_manual(values = c("Real wholesale price" = "blue", "Total tax" 
+="magenta"))                                 
+
+```
+
+*This figure corresponds with Panel B. "Total tax" on page 7 of the paper*
+
+The plot shows that the total tax burden followed an upward trend from around 1990, despite the decreasing energy tax. Have a look at the values using the `filter()` command from the `dplyr` package to search for the price elements of the years 1960, 1970, 1980, 1990, and 2005 and the corresponding prices and total tax values to get a feeling for their magnitude. Therefore, it is useful to first build a vector v with the years you want to observe. Then you can use the `filter()` command and define the original data frame `dat_sub`. To write a neat code you can use the `%in%` syntax to filter the chosen years and save the new data frame in `df`. 
+You just have to run the code by pressing *check*.
+```{r}
+#< task
+# build vector with the rows you are interested in
+v = c (1960, 1970, 1980, 1990, 2005)
+# filter for the vector into a new data frame
+df=filter(dat_sub, year %in% v)
+# show head of the new data frame
+head(df)
+#>
+```
+In 1960 the gasoline price per liter was $7.45\ SEK$. The total tax was driven by the energy tax rate of $4.13\ SEK/l$ only. Over the following twenty years, the gasoline price varied, falling to $5.63\ SEK/l$ in 1970 and rising to $8.10\ SEK$ in 1980. The energy tax was more constant at a level of around $4\ SEK/l$ with a plunge in 1977. In 1990 the gasoline price was $8.48\ SEK/l$ and the total tax burden increased at $5.48\ SEK/l$ due to the implementation of the VAT. In 2005 both burden were significantly higher with $11.13\ SEK$ per liter of gasoline and a total tax burden of $7.19\ SEK/l$ consisting of energy tax, carbon tax and VAT.
+
+### Retail price
+
+Several price elements are affecting the real retail price of gasoline (`pr_real`): The wholesale gasoline price without taxes (`pw_real`), the energy tax (`tax_en`), the carbon tax (`tax_CO2`) and the VAT (`tax_VAT`) which is a multiplier to all other price elements:
+
+$$p_{retail} = (p_{wholesale} + tax_{energy} + tax_{CO2}) \cdot tax_{VAT}$$
+
+Let's remember that the real gasoline price in Sweden increased since 1990. Also, the total tax burden increased. But what was the retail price as a sum of wholesale gasoline price and total tax? 
+
+We use the pipe operator `%>%` for a neat code and the `mutate()` command to generate a new column that contains the total gasoline price. It is the sum of the real gasoline price `pw_real` and the tax elements `total_tax` stored in `dat_sub`. Use the pipe operator and mutate command to generate a column `pr_real` as the sum of `pw_real` and `total_tax`. Store the results in `dat` and show the head of `dat`.
+
+#< info "Data manipulation with dyplr - mutate and %>%"
+
+The `dplyr` package is very useful for easy data preparation in R. 
+The `mutate()` command `mutate(data = ..., column=...)` adds a new column to your data frame. In our example, we want to generate a new column `(mutate(new_column)` as the sum of every year's values from two other columns. So we need a vector `(mutate(new_column = c(column1 + column2)))`
+ 
+`%>%`: The pipe operator enables us to write neat and elegant code. It executes several functions step by step. The result from the first function though is used as input for the next function. The advantage is that you only define the data frame once in the first line so it does not have to be specified again for later steps. You connect the commands with `the pipe operator`%>%`.                                    
+#>
+
+```{r}
+#< task
+# Load the dplyr package
+library(dplyr)
+#>
+# Use the pipe operator to create dat with data from dat_sub
+dat = dat_sub %>%
+# Use mutate to generate pr_real as a sum of pw_real and total_tax
+mutate(pr_real = c(pw_real + total_tax))
+# Show the head of dat
+head(dat)
+```
+You created a new column `pr_real` on the right end with the real retail gasoline price for every year from 1960 - 2005. Use `ggplot` to plot `pr_real` with `year` on the x-axis and `pr_real` on the y-axis. Also, add a vertical line of the type "dotted" to the year 1990. Fill in the right values for the placeholders below. Then run the code.
+```{r dev="svg"}
+#< fill_in
+# ggplot(data=dat, aes(___, ___))+
+# geom_line( colour = "cyan") +
+# geom_vline(xintercept=___, linetype = "dotted")+
+# labs(y= "Retail Gasoline Price (SEK/liter)")
+# 
+#>
+#sample solution
+ggplot(data=dat, aes(x=year, y=pr_real))+
+geom_line(colour = "cyan") +
+geom_vline(xintercept=1990, linetype = "dotted")+
+labs(y= "Retail Gasoline Price (SEK/liter)")
+
+```
+
+In 1960 the wholesale net price was $7.45\ SEK$ for one liter of gasoline. Additionally one had to pay $4.13\ SEK/l$ for taxes. The retail price added up to $11.58\ SEK$ per liter in total. Until 1977 the retail price fell on to its lowest value of $9.13\ SEK/l$. In 1990 Sweden introduced the VAT and one year later the carbon tax to the transport sector. In 1991 the real price of gasoline has already risen to $7.96\ SEK/l$. The tax burden increased at $5.26\ SEK/l$. In 2005 one had to pay $11.13\ SEK/l$ for the gasoline and additionally $7.19\ SEK/l$ for taxes. So, the retail price increased to $18.32\ SEK$ per liter. In 2014 the pre-tax price for gasoline made up only $42\%$ of the consumer price. The taxes accounted for $58\%$, the carbon tax alone for $17\%$ (cf. Swedish Tax Agency, 2015, p.26). Go on with the next exercise to get an overview over gasoline consumption
+
+
+## Exercise 1.2 Gasoline consumption and CO2 emissions 
+
+This exercise shows how the fuel consumption and CO2 emissions from transport changed between 1960 and 2005. We again load the `descr_Sweden.Rds` data frame and use `select()` to keep some relevant variables. Just press **enter** and **check** to run the code.
+
+```{r}
+#< task
+# read in data
+dat = readRDS("descr_Sweden.Rds")
+# select relevant variables
+dat_sub = select(dat, year, gas_cons, diesel_cons, CO2_Sweden, pw_real)
+#>
+```
+
+We already know that the real retail gasoline prices rose dramatically between 1960 and 2005. We now want to plot the Swedish gasoline and diesel consumption in kg oil-equivalents. Press *check* to run the code
+
+```{r dev="svg"}
+#< task
+#Run the code
+ggplot(data=dat, aes(x=year))+
+ geom_line(aes(y=diesel_cons, colour="Diesel consumption"))+ 
+ geom_line(aes(y=gas_cons, colour="Gasoline consumption"))+
+ geom_vline(xintercept=1990, linetype = "dotted") +
+ labs(y= "Road sector fuel consumption per capita (kg oil-eq)")+
+ scale_color_manual(values=c("Diesel consumption"="orangered", "Gasoline consumption"="red"))
+#>
+```
+
+*This figure can be found on page 7 of the paper as Figure 2 "Road Sector Fuel Consumption Per Capita In Sweden 1960-2005".*
+
+Until 1989 the per capita gasoline consumption increased quite sharply. It peaked at $518\  kg_{oil-eq}$ and declined afterwards. In 2005 the value was $427\  kg_{oil-eq}$. One form of consumers response to higher fuel prices is the substitution of gasoline by diesel since diesel engines offer higher efficiency. From 1960 until around 1990 diesel consumption increased as well as gasoline consumption. The per capita consumption of diesel in 1960 was $57\ kg_{oil-eq}$, nearly four times lower than the gasoline consumption ($207\ kg_{oil-eq}$). Until 2005 diesel consumption followed an upward trend to $340\ kg_{oil-eq}$. Opposed to gasoline consumption, it did not decline after the tax reform but even increased. Hence, the figure indicates that carbon tax and VAT had an impact on consumers' transport fuel consumption. Consumers may have been reacting to higher fuel prices by buying more efficient cars.
+
+### CO2 emissions
+
+So we can see that taxes were leading to higher prices and may have had an effect on consumers' behavior. But what the paper is about, is the effect of taxes, especially the carbon tax, on CO2 emissions. `CO2_Sweden` shows Swedish per capita CO2 emissions from transport from 1960 - 2005. The transport emissions are calculated on sales of transport fuels (gasoline and diesel) and their carbon content.
+
+To plot the per capita CO2 emissions from transport in Sweden press *check*. We assign the plot to the variable `CO2` as we will use it again later on.
+```{r dev="svg"}
+#< task
+#Plot
+CO2 = ggplot(data=dat, aes(x=year, y=CO2_Sweden)) + geom_line(colour ="green4")+
+  geom_vline(xintercept=1990, linetype = "dotted") + 
+  labs(y="Per capita CO2 Emissions from transport (t CO2)")
+CO2
+#>
+```
+
+The per capita CO2 emission from transport in Sweden rose steadily from 1960 until 1989 with a minor dent around 1980. They started at a level of $1.02\ t_{CO2}$ and rose to $2.51\ t_{CO2}$ in 1989. After 1991 the CO2 emissions declined slightly and rose very slowly from around 1995 compared to the trend before 1989. In 2005 the value was $2.49\ t_{CO2}$.
+
+We want to compare this to the development of the real wholesale price without taxes `pw_real`. We use `grid.arrange` from the `gridExtra` package to show both plots simultaneously.
+
+#< info "grid.arrange"
+`grid.arrange()` from the `gridExtra` package allows you to place two or more plots one above the other or side by side. This is useful when they have a different data basis and different scales. To arrange two plots side by side, you first have to define them. With `plot1` and `plot2` as an example, the syntax is `grid.arrange(plot1 , plot2, ncol = 2)`.
+#>
+
+The code for the plot of `pw_real` is already given.  It is assigned to `Price`. Add a `grid.arrange()` command to show the plots `CO2` and `Price` side by side.
+```{r dev="svg"}
+#< task
+library(gridExtra)
+#Plot prices
+Price = ggplot(data=dat, aes(x=year, y= pw_real))+ geom_line(colour = "blue")+
+     geom_vline(xintercept=1990, linetype = "dotted")+
+  labs(y="Real wholesale gasoline price (SEK/liter)")
+#>
+# Plot CO2 and Price with grid.arrange() side by side. Enter your code here:
+grid.arrange(CO2, Price, ncol = 2)
+```
+
+#< award "plots, plots, plots"
+With ggplot you are now able to visualize data in a nice way. 
+If you want to learn more, <a href="https://rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf" target="_blank">here</a> is a helpful overview called "Cheat Sheet for Data Visualization with ggplot2".
+#>
+
+The two plots show the development of per capita CO2 emissions from transport and real wholesale gasoline prices between 1960 and 2005. We can see that they grew quite differently. Whereas the CO2 emissions followed an upward trend until around 1990, the gasoline price fluctuated considerably. After 1990 the CO2 emissions first fell and until 2005 returned to the same level. The gasoline price instead rose by around $30 \%$ between 1990 and 2005.
+The two figures don't indicate a major connection between wholesale gasoline prices and CO2 emissions from transport.
+
+Go on with the next exercise to learn how the energy tax reform in 1990/1991 influenced the emissions of carbon dioxide.
+
+## Exercise 2 Estimating causal effects
+
+In the following section, we want to evaluate the effects of the energy tax reform 1990/1991 in Sweden on CO2 emissions by using comparative case studies. The goal is to find out whether carbon tax and VAT were leading to an emission reduction. Therefore, we will first have a look at simple time differences before we get to know "Differences-in-Differences" estimation and the "Synthetic Control Method". 
+
+What we want to find in the following investigations, is a **treatment effect** of the intervention (energy tax reform) on per capita CO2 emissions from transport in Sweden. Hence, we want to find the difference between Sweden with the energy tax reform and Sweden without the intervention. We define that there are $J$ countries with $j=1$ for the treated unit which is in our case Sweden. As well, we have $t$ time periods. Let $y_{1t}$ be the outcome of interest i. e. the per capita CO2 emissions from transport in Sweden in time $t$. We then find two potential outcomes: $y_{1t}^{(1)}$ for a Sweden with an intervention and $y_{1t}^{(0)}$ if no intervention occurred. Thus, we find the treatment effect $\tau_{1t}$ as the difference between the potential outcomes:
+
+
+$$\tau_{1t} = y_{1t}^{(1)}-{y}_{1t}^{(0)}$$
+
+As one country either had the intervention or not, we cannot measure this treatment effect directly. For example, we can observe CO2 emission values for Sweden with the implementation of the energy tax reform of 1990/1991. Post-treatment emission without the intervention cannot be observed. In the further analyses we want to find a way to consistently estimate the treatment effect $\tau_{1t}$.
+
+
+### Time differences
+
+Our first approach is to begin by comparing the difference in the outcome before and after the tax reform. We therefore assume that the effect is constant for all years. Hence, we find the treatment effect as a gap between CO2 emission values after 1990 which we denote as $y_{1t}^{(1)}$ and the emissions before 1990 $y_{1t}^{(0)}$. If we assume, that the causal effect is constant and there are no underlying endogeneity problems, we can estimate $\tau_{1t}$ as the difference between the average outcomes of $y_{1t}$ after 1990 ($\bar{y_1}^{(1)}$) and before 1990 ($\bar{y_1}^{(0)}$). 
+
+Alternatively, we can estimate the following linear regression through Ordinary Least Squares estimation:
+
+$$y_{1t} = \beta_0 + \beta_1\delta_{1t} + \varepsilon_{1t}$$
+with:
+- $y_{1t}$ is the outcome of interest in Sweden in time $t$ (per capita CO2 emissions from transport in Sweden). It is also called dependent variable.
+
+- $\delta_{1t}$ is a time dummy. It receives the value 1 if the year is a post-treatment year and 0 otherwise. It is also called explanatory variable.
+
+- $\varepsilon_{1t}$ is an error term with unobserved factors.
+
+We are searching for a relation between the dummy variable $\delta_{1t}$ and the outcome $y_{1t}$, described through $\beta_1$. Given that the explanatory variable is exogenous (uncorrelated with the error term), we assume that $\beta_1$ is the treatment effect $\tau_{1t}$ and can be consistently estimated by the OLS estimator $\hat\beta_1$. To obtain a consistent estimator $\hat{\beta}_1$ of $\beta_1$ the correlation between the explanatory variable ($\delta_{1t}$) and the error term $\varepsilon_{1t}$ has to be $0$. If the error term includes a relevant variable that is correlated with the explanatory variable $\delta_{1t}$, we call this an **endogeneity problem**: the correlation between the explanatory variable and the error term then differs from $0$. If we have an endogeneity problem, the OLS estimator is biased and inconsistent which means that we can't map the treatment effect.
+
+For further information on regression theory also have a look at Verbeek, 2012, Chapter 2 and Kennedy, 2008, p.40 ff.
+
+So before performing a regression, it is always helpful to think about what you would expect to find for your coefficients. In our example, we have to think of what we would expect $\beta_1$ to be.  Answer the quiz:
+
+#< quiz "Sign of coefficient"
+question: What is the expected sign of the coefficient beta1?
+sc:
+- I expect the coefficient beta1 to be positive.
+- I expect the coefficient beta1 to be negative.*
+- I expect the coefficient beta1 to be zero.
+failure: Try again.
+success: Great. That's right!
+#>
+
+If the carbon tax had an effect after 1990 compared to before 1990 and it was leading to a reduction in CO2 emissions, we would expect the coefficient $\beta_1$ to be negative. Remember that the explanatory variable $\delta_{1t}$ and the error term $\varepsilon_{1t}$ have to be uncorrelated. If they are correlated, our explanatory variable is **endogenous**. The found estimator then is biased which means that we systematically over- or underestimate $\hat\beta_1$ compared to $\beta_1$. Let us think of scenarios where we find a biased estimator. Answer the quizzes below:
+
+
+#< quiz "Scenario for correlation 1 "
+question: Think of the following scenario. Coincidentally after 1990 something could have occurred that had a big negative influence on CO2 emissions. For example, there could have been a global decrease in emissions due to a global recession. Or maybe technology advanced such that cars worldwide emitted less carbon dioxide. In this case, would we over- or underestimate the treatment effect?
+sc:
+- we would overestimate the treatment effect*
+- we would underestimate the treatment effect
+- we can't answer the question with the given information
+
+failure: Try again.
+success: Great. That's right!
+#>
+
+If after 1990 emissions decreased coincidentally compared to before 1990, the error term and the explanatory variable would be positively correlated. We would think that the lower emission values were caused by the energy tax reform. Thus, we would overestimate the effect of the carbon tax on CO2 emissions.
+
+#< quiz "Scenario for correlation 2 "
+question: Now think of a second scenario. Maybe emissions after 1990 have been rising due to more wealth. Maybe many more people have been able to afford a car after 1990 than before. Also, the bought cars got bigger and emitted more CO2. In this case, would be over- or underestimate the treatment effect?
+sc:
+- we would overestimate the treatment effect
+- we would underestimate the treatment effect*
+- we can't answer the question with the given information
+failure: Try again.
+success: Great. That's right!
+#>
+
+In this scenario emissions coincidentally increased after 1990 compared to before 1990. The error term and the explanatory variable would be negatively correlated. This means if the carbon tax lowered CO2 emissions, but unobserved factors were leading to higher emissions in the same period, we would underestimate the treatment effect. In both cases, our explanatory variable $\delta_{1t}$ would not be exogenous, but endogenous. Thus, our estimator $\hat\beta_1$ would be biased and we would measure an inconsistent treatment effect $\beta_1$. We would then wrongly take the estimated effect of the carbon tax for a causal effect on CO2 emissions, even though it could be a random effect that is part of the error term $\varepsilon_{1t}$.
+(Read more about bias in OLS regression in Wooldridge, 2013, p.45 ff.)
+
+We want to estimate the given regression model, keeping in mind that there might be an endogeneity problem. For our investigations, we need another data frame that is called `carbontax_data.dta`. Use `read.dta` to load `carbontax_data.dta` into `dat` and show a sample of 6 rows of `dat`.
+
+#< info "read.dta()"
+
+Info: The function `read.dta()` is part of the `foreign` package and reads Stata files of version 5-12 in an R data frame. You have to specify the package with the `library()` command before loading the data frame.
+#> 
+
+```{r}
+#< task
+#>
+# load the foreign package
+library(foreign)
+# assign the data to dat
+dat = read.dta("carbontax_data.dta")
+# show a sample of dat
+sample_n(dat, 6)
+```
+
+The data frame stores information from 15 countries between 1960-2005. It provides:
+- per capita CO2 emissions from transport (`CO2_transport_capita`)
+- GDP per capita in US dollars (`GDP_per_capita`)
+- per capita gasoline consumption (`gas_cons_capita`)
+- number of motor vehicles per 1000 people (`vehicles_capita`)
+- urban population as a percentage of the total population (`urban_pop`)
+- and population density (`pop_density`)
+
+The data is taken from **The World Bank**, **Penn World Table**, and **AMECO**.
+
+We now will estimate the given regression model. Let us begin with creating a dummy variable `delta` that indicates the time of the observation: 1 for years as after 1989, 0 for pre-treatment years. We use the `ifelse()` command from base R to create `delta`. Fill in the right symbol `>=`, `<=` ,`<` or `>` in the placeholder below. 
+
+```{r}
+#< fill_in
+#dat$delta = ifelse(dat$year ___ 1990,1,0)
+#head(dat$delta)
+#tail(dat$delta)
+#>
+#sample solution
+#fill in the right symbol for the placeholder
+dat$delta = ifelse(dat$year >= 1990,1,0)
+#show first entries
+head(dat$delta)
+#show last entries
+tail(dat$delta)
+```
+The first years of `delta` receive the value 0 and the last years receive the value `1`. So now we can do our first Ordinary Least Square (OLS) regression for which R offers different tools. A simple way is the usage of the `lm()` command in combination with `summary()`. Have a look at the infobox below for further information.
+
+#< info "lm() and summary()"
+The `lm()` command estimates linear regression models with the syntax 
+`lm(dependent variable ~ explanatory variable, data= dataset)`.
+It is possible to add more than one explanatory variable with `+`.
+
+`summary()` shows the output of the regression, presented within four substantial parts: Call, Residuals, Coefficients, and some statistics. Call displays the formula that R used to fit the data e. g. our OLS regression model. The Residuals section shows summary statistics for the residuals of the fitted model.
+
+What we are interested in is the `Coefficients` part which contains the estimated values for the coefficients. For each, four columns show the following statistics:
+
+`Estimate` contains the values of the estimators $\hat\beta$ of the true $\beta$.
+
+`Std. Error` is the standard error of the coefficient. It measures the precision of our estimation. Hence, we prefer smaller standard errors relative to the estimators.
+
+`t-value` is the number of standard errors that the coefficient is away from zero. For large t-values the null hypothesis that the true coefficient is 0 is rejected. 
+
+`Pr(>|t|)` is the p-value. It is the smallest significance level, at which the null hypothesis would be rejected, given the observed t-statistic. It measures the probability to find the realized or a more extreme test statistic if the null hypothesis is true (cf. Wooldridge, 2013, p.133). Small p-values indicate that there is a relationship between the dependent and independent variables. In econometric literature, a p-value of 5% or lower is said to be a good measure for the significance of a variable.
+
+(Read more at Auer and Rottmann, 2010, p.459 ff. and Wooldridge, 2013, p.121 ff.)
+#>
+
+Now use the `lm()` command to regress the outcome variable of interest `CO2_transport_capita` on the time dummy `delta` and assign the results to `Sweden_time`. Then show a summary of `Sweden_time`.
+```{r}
+#< task
+#>
+#Regress CO2_tranport_capita on delta and assign it to Sweden_time
+Sweden_time = lm(CO2_transport_capita ~ delta, data = dat)
+# show the summary of Sweden_time
+summary(Sweden_time)
+
+```
+
+#< award "Regression"
+Well done! You learned how to perform regressions using `lm()` and how to show the results with `summary()`. This will help you to analyse empirical data. Always keep in mind that for interpreting your regression you should be aware of what you would expect your estimators to be like.
+#>
+
+We receive an estimator $\hat{\beta}_1$ of our treatment effect $\beta_1$ of $0.752$. It measures the time gap between emissions before and after the treatment. We find that per capita CO2 emissions in Sweden on average are $0.75$ tons higher in post-treatment years compared to pre-treatment years. The estimator is positive, which is not what we expected. If we would misinterpret the effect as causal, we would think that the carbon tax was leading to higher CO2 emissions. We would underestimate the effect of the carbon tax on CO2 emissions as described in the second scenario. Hence, we can be quite sure, that the explanatory variable $\delta_{1t}$ is endogenous and the estimator $\hat\beta_1$ is biased.
+
+To overcome endogeneity problems, we want to remove factors from the error term. One idea is to control for several effects for example by adding control variables. Within the next exercise, we want to control for country-specific effects. By comparing the effects in Sweden to one or more other countries that did not implement a carbon tax, we thus can control for general emission trends. The data frame `carbontax_data.dta` stores information for several countries. Let's see which countries are part of it. A nice way to do so is the `unique()` command. It checks your data frame for double or multiple values and removes entries that occur more than once. We achieve a short R command through the following syntax `unique(dat$variable)`. Use the `unique()` command to show the different countries.
+```{r}
+#< task
+# Use unique() to show the countries stored in dat
+#>
+unique(dat$country)
+```
+
+Andersson generated a data frame that consists of data for 15 OECD countries. It contains Australia, Belgium, Canada, Denmark, France, Greece, Iceland, Japan, New Zealand, Poland, Portugal, Spain, Sweden, Switzerland, and the United States. Other OECD countries were excluded due to fuel tourism, large changes in fuel taxes during the sample period, or the implementation of a carbon tax. We will use this sample group for our further investigations about the effects of the energy tax reform on CO2 emissions.
+
+## Exercise 2.1 Differences-in-Differences
+
+### DID - background
+
+Just regarding time differences does not lead to sufficient results, as there might be many more factors that influence our explanatory variable. A frequent method that is used to do comparative studies is the **Differences-In-Differences (DID) estimation**. It controls for country-specific effects by observing two groups at two different time periods:
+
+- A **pre-treatment** period where no political intervention occurred.
+- A **post-treatment** period with an intervention in one group (Sweden).
+
+This method compares data points from one or several control countries to systematically search for effects in the observed unit. Again, the goal is to find a treatment effect of the tax reform on CO2 emissions in Sweden. It aims to overcome endogeneity problems by adding one or more control countries. For simplicity, we define that there are $J=2$ countries with $j=1$ for Sweden and $j=2$ for one control unit. Let's assume that Denmark was a good control country as it is geographically and in many societal regards close to Sweden. In our example, the intervention (or treatment) is the energy tax reform in Sweden. The DID estimator allows the identification of the effects of the intervention by comparing the **mean of the differences** between Sweden and the control country Denmark. We assume that the treatment effect is the same over time. Thereby the **first difference** is the averaged delta between observed points of time in the pre- and post-treatment periods. The **second difference** describes the gap over time between both observed countries, interpreted as a causal effect (cf. Bertrand, Duflo, and Mullainathan, 2003, p.2 f.). As we take average values we denote the treatment effect for Sweden $\tau_1$ without a time index $t$.
+
+Thus, let $\bar{y}_{1}^{(0)}$ be the average Swedish per capita CO2 emissions from transport before the tax reform and $\bar{y}_{1}^{(1)}$ the average emission values afterwards. So, we find $\Delta \bar{y}_1 = \bar{y}_{1}^{(1)} - \bar{y}_{1}^{(0)}$. And let correspondingly be $\bar{y}_{2}^{(0)}$ the average pre-treatment emission values for the control country Denmark and $\bar{y}_{2}^{(1)}$ the average post-treatment emissions, so we find $\Delta \bar{y}_2 = \bar{y}_{2}^{(1)}-\bar{y}_{2}^{(0)}$. Hence, we can estimate the impact of the intervention on CO2 emissions in Sweden as:
+
+$$ \hat\tau_1 = \Delta\Delta y_1 = \Delta \bar{y}_1 - \Delta \bar{y}_2 = (\bar{y}_{1}^{(1)} - \bar{y}_{1}^{(0)})-(\bar{y}_{2}^{(1)}-\bar{y}_{2}^{(0)})$$
+Have a look at Wooldridge, 2013, p.454 ff. for more information about DID estimation.
+
+The method uses an unweighted average of the outcome variable from the control group. It is based on a **parallel trend assumption** that implies that macroeconomic shocks affect the control group (Denmark) in the same way as the controlled unit (Sweden). That means that without the intervention the group-specific trends of the observed variable would be identical. In our example, it would imply that the CO2 emissions in Sweden would have changed at the same rate as the emissions in Denmark if no carbon tax would have been implemented. Thus, the difference between the treated and the control group must be constant over time. If this assumption is violated, the found estimator will not be consistent and the estimation of the causal effect will be biased.
+
+Before we go on with our analysis, let's first select CO2 emissions from Sweden and Denmark. We use the `filter()` command to filter for the two countries and `select()` to select `country`, `year`, and `CO2_transport_capita`. We store our selected data in `dat`. Just press **edit** and **check** to run the code.
+```{r}
+#< task
+# load data
+data = read.dta("carbontax_data.dta")
+# generate a vector for Denmark and Sweden
+v = c("Denmark", "Sweden")
+# filter for Denmark and Sweden
+df = filter(data, country %in% v)
+# select relevant columns
+dat = select(df, country, year, CO2_transport_capita)
+# show head of data frame
+head(dat)
+#>
+```
+
+Our data frame now only stores per capita CO2 emissions from transport from 1960 until 2005 for Denmark and Sweden. As described above, the DID method uses the gaps over time between the two groups and the delta between the pre- and post-intervention periods of the dependent variable. To get an intuition for the magnitude of CO2 emissions, we begin with calculating the means of per capita CO2 emissions from transport for Denmark and Sweden over the whole period from 1960-2005. Therefore, we use the `group_by()` command.
+
+#< info "group_by"
+The `group_by()`command is part of the `dplyr` package. You can use it to convert a data frame into a grouped data frame. In combination with `summarise()`, you can perform operations like calculating sums or means by groups. 
+#>
+
+We want to group our data frame by `country`, calculate the `mean` of `CO2_transport_capita`, and assign it to `mean` Fill in the right values for the placeholders below. 
+
+```{r}
+#< fill_in
+#mean = dat %>%
+#  group_by(___) %>%
+#  summarise(mean = ___(CO2_transport_capita, na.rm = TRUE))
+# mean
+#>
+#sample solution
+mean = dat %>%
+# group our data by country  
+  group_by(country) %>%
+# calculate the mean of the groups  
+  summarise(mean = mean(CO2_transport_capita, na.rm = TRUE))
+# show results
+mean
+```
+The average CO2 emissions from transport in Denmark with $1.78\ t_{CO2}$ are $11.8\%$ lower than in Sweden with $1.99\ t_{CO2}$ over the whole observed period.
+
+Let's have a look at the averages in the pre-intervention period from 1960-1989 and the post-intervention period from 1990-2005. The `dplyr` package again offers a neat code: We use the `pipe operator` and the `mutate()` command to generate a new variable `post` that stores the values 0 and 1 for the defined years. We then use the `group_by()` command to group data for Denmark and Sweden and the time dummy. With `summarise`, we calculate the mean of `CO2_transport_capita` for the two groups. Fill in the rights values into the placeholders. 
+```{r}
+#< fill_in
+# mean_time = dat%>%
+# ___(___ = ifelse(year >=1990,1,0))%>%
+# ___(country, post)%>%
+#  summarise(mean_time = ___(___, na.rm = TRUE))
+# mean_time
+#>
+#sample solution
+ mean_time = dat%>%
+# create a dummy variable post with mutate  
+ mutate(post = ifelse(year >=1990,1,0))%>%
+# group by country and time dummy  
+ group_by(country, post)%>%
+# calculate the mean of the groups  
+  summarise(mean_time = mean(CO2_transport_capita, na.rm = TRUE))
+mean_time
+```
+
+#< award "data transformation with dplyr"
+Congratulations. You solved some common data manipulation challenges with the help of `dplyr`commands. Therefor you earn an award and another  <ahref="https://nyu-cdsc.github.io/learningr/assets/data-transformation.pdf" target="_blank">cheat sheet</a> that will help you to write neat and elegant code.
+#>
+
+
+Remember that `mean` for Denmark over the whole period was $1.78\ t_{CO2}$. The pre-treatment mean `Denmark 0` corresponds with $\bar{y}_2^{(0)}$ and is $1.54\ t_{CO2}$, the post-treatment mean `Denmark 1` corresponds with $\bar{y}_2^{(1)}$ and is $2.23\ t_{CO2}$. Hence, the gap in the mean between the two periods is $\Delta \bar{y}_2 = \bar{y}_2^{(1)}- \bar{y}_2^{(0)} = 0.69\ t_{CO2}$. The per capita CO2 emissions from transport in Denmark grew by $45\%$ after 1990 compared to before 1990. In Sweden, `mean` was $1.99\ t_{CO2}$ which is $0.21\ t_{CO2}$ more than for Denmark over the whole period. The pre-treatment mean $\bar{y}_1^{(0)}$ is $1.79\ t_{CO2}$, the post-treatment mean $\bar{y}_1^{(1)}$ is $2.35\ t_{CO2}$. The gap between the two periods is $\Delta \bar{y}_1 = \bar{y}_1^{(1)} - \bar{y}_1^{(0)} = 0.56\ t_{CO2}$ which is a growth of around $31\%$.
+
+Before we use OLS-Regression to find the DID estimator, we can calculate the estimated treatment effect $\hat\tau_1$ manually:
+
+$$\begin{align*} 
+\begin{array}{c}
+\Delta\Delta y_1 = \Delta \bar{y}_1 - \Delta \bar{y}_2 = \\\
+(2.3459-1.7937)-(2.2271- 1.535) =  \\\
+ (0.5522 - 0.6921) =  -0.1399 
+  \end{array}
+  \end{align*}$$
+
+Our estimated treatment effect $\hat\tau_1$ thus is $-0.1399$ tons of CO2 for Sweden in an average post-treatment year compared to the control country Denmark.
+
+### DID Estimation with OLS
+
+Again, we alternatively can estimate a linear regression model with Ordinary Least Squares Estimation:
+
+  $$y_{jt} = \beta_0 + \beta_1T_{j} + \beta_2P_{t}  + \beta_3T_{j}P_{t} + \varepsilon_{jt}$$
+
+with:
+
+- $j$ is a country identifier.
+
+- $t$ indicates the time (year).
+
+- $y_{jt}$ is the dependent variable (per capita CO2 emissions from transport) for unit $j$ in time $t$.
+
+- $T_{j}$ is a dummy variable that indicates whether the observed unit had a treatment (1 for Sweden, 0 otherwise). It controls for fixed differences between the units we compare.
+
+- $P_{t}$ is a dummy variable that indicates the time of the observation (1 for years from 1990 (post-treatment), 0 otherwise). It controls for the circumstance that conditions change over time for every control country - treated and untreated.
+
+- $T_jP_t$ is an interaction term.
+
+- $\varepsilon_{jt}$ is an error term.
+
+Also look at Angrist and Pischke (2015), p. 463 ff. to learn more about Differences-in-Differences and the regression model.
+
+Before we fit the given equation, answer a quiz:
+
+#< quiz "DID coefficient of interest"
+question: Which of the coefficients is the causal effect of interest?
+sc:
+- beta1 is the coefficient of interest
+- beta2 is the coefficient of interest
+- beta3 is the coefficient of interest*
+
+failure: Try again.
+success: Great. Thats right!
+#>
+
+
+In the DID approach, $\beta_1$ measures the gap between the treated and the untreated unit before the treatment. $\beta_2$ measures the gap between the post- and pre-treatment emission values in the control unit(s). We are mainly interested in the coefficient $\beta_3$. We again assume that $\beta_3$ described the treatment effect of the intervention for Sweden if we can find a consistent estimator $\hat\beta_3$. It then measures the effect of an average post-treatment year for the treated unit compared to the control unit(s).
+
+To get to know the DID approach, we will now use the given regression model to estimate the treatment effect ${\beta_3}$ for Sweden (compared to Denmark only). Let's check if we obtain the same result as above by performing the OLS regression. Press *check* to run the code in the chunk and have a look at the single steps.
+
+```{r}
+#< task
+
+# create treated dummy "treated"
+df$treated = ifelse (df$country == "Sweden",1,0)
+
+# create a time dummy "post§
+df$post = ifelse(df$year >= 1990,1,0)
+
+# We create an interaction between "post" and "treated":
+df$Sweden_post = df$post * df$treated  
+
+# We estimate the did estimator and show the results in a summary.
+did_Sweden = lm (CO2_transport_capita ~ treated + post + Sweden_post, data = df)
+summary(did_Sweden)
+#>
+```
+
+We use our data frame `df` that consists of Denmark and Sweden only. We start by creating the first dummy variable $T_j$ to identify the unit that is exposed to the treatment. In our example, Sweden implemented a carbon tax, so it gets the value 1. We call this dummy variable `treated`. Next, we define our time dummy variable $P_t$ which we call `post` and which indicates the time when the treatment started. As VAT was implemented in 1990 and the carbon tax followed one year later, years before 1990 receive a value of 0 and years after a value of 1. The next step is to create an interaction between `treated` and `post` that we store in `Sweden_post`. This corresponds to our interaction term $T_jP_t$. Finally, we regress our outcome of interest `CO2_transport_capita` for Sweden on our dummies and the interaction term by using the `lm` command. `summary()` shows us the output of the regression.
+
+We receive three estimators. $\hat{\beta_1}$ (`treated`) measures the gap between the treated unit and the control unit before the treatment ($\bar{y}_1^{(0)}-\bar{y}_2^{(0)}$). We find a value of $0.259\ t_{CO2}$. It is positive, as pre-treatment emissions are higher in Sweden than in Denmark. $\hat{\beta_2}$ (`post`) is  $0.692\ t_{CO2}$ and measures the gap between emissions values of the control unit ($\bar{y}_2^{(1)}-\bar{y}_2^{(0)}$). It is also positive, as emissions in Denmark are higher after 1990 than before. $\hat{\beta_3}$ is our DID estimator. The value $-0.1399$ represents the estimated treatment effect from VAT and carbon tax compared to our sample country Denmark. As above, we find an emission reduction of $-0.1399$ tons of CO2 for Sweden in an average post-treatment year compared to Denmark.
+
+Let's have a look at the plots of the CO2 emissions of Denmark and Sweden. Press *check* to run the code. (Note that the code looks a bit different as we plot a subset of our data frame.)
+```{r dev="svg"}
+#< task
+# Plot per capita CO2 emissions of Denmark and Sweden
+Plot = ggplot(df)+ geom_line(aes(year, CO2_transport_capita, group=country, colour=country))
+Plot %+% subset(df, country %in% c("Denmark", "Sweden")) + 
+  geom_vline(xintercept =1990, linetype = "dotted") +
+  labs(y="Per capita CO2 emissions from transport (metric tons)")
+#>
+```
+
+We can see that the two graphs follow a quite different trend. But in the complete observed period, the per capita CO2 emissions from transport in Denmark are smaller than in Sweden. After 1990 the emissions in Sweden seem to grow more slowly than in Denmark. If we would assume that our estimator was consistent, we would find that the carbon tax was leading to an emission reduction of around $-0.14$ tons of CO2 in an average post-treatment year compared to Denmark. So we find a negative estimate, just as we expected. But does that mean, that the DID estimator finds a causal effect? To revise, what you have learned about DID estimation, answer the following quizzes:
+
+#< quiz "DID estimation"
+question: Complete the following sentence. In our example, we use the DID estimator that estimates
+sc:
+- the difference between pre- and post-treatment per capita CO2 emissions in Sweden
+- the post-treatment difference of per capita CO2 emissions between Sweden and Denmark
+- the difference between pre- and posttreatment per capita CO2 emissions as well as between Sweden and the control group*
+
+failure: Try again.
+success: Great. Thats right!
+#>
+
+In the exercise before we estimated the gap between pre- and post-treatment values in Sweden. So, we controlled for time effects.
+#< quiz "advantage of DID estimation"
+question: What is the advantage of the DID estimation compared to the estimation in the exercise before?
+sc: 
+- the DID estimation controls for random country-specific effects*
+- the DID estimation overcomes endogeneity problems by showing macroeconomic shocks that affect the controlled unit
+- the DID estimation finds causal effects because of parallel trends between the treated unit and the control countries 
+failure: Try again.
+success: Right. The DID estimation controls for random country-specific effects. That doesn't automatically mean that we don't have any more endogeneity problems. We can still find that our estimator is biased. Hence, the effects we find might still not be causal.
+#>
+
+Let's compare Sweden to another country e. g. Iceland. Iceland's pre-treatment mean is $1.82\ t_{CO2}$  which is slightly higher than in Sweden, the post-treatment mean is $2.30\ t_{CO2}$ which is slightly lower than in Sweden. With this information, answer the quiz:
+
+#< quiz "beta_3 Iceland"
+question: Is the DID estimator positive or negative compared to Iceland?
+sc:
+- The DID estimator is negative
+- The DID estimator is positive*
+- we can't say
+failure: Try again.
+success: Great! That's right.
+#>
+
+With Iceland as a control country, $\Delta \bar{y}_1$ stays the same (positive value). $\Delta \bar{y}_2$ with Iceland as control country is also positive but it is smaller than $\Delta \bar{y}_1$. Iceland's increase in CO2 emissions was smaller than it was in Sweden. Hence, we find a DID estimator of $+0.073t_{CO2}$. Thus, we would conclude, that the carbon tax in Sweden was leading to higher CO2 emissions.
+
+The results depend on the country that is chosen to compare the treated unit with. We must be careful, which country we choose for comparison. Even if we consider one quite equal to Sweden, random effects can cause dramatically different results. As well, there can still be factors in the error term that are correlated with the interaction term. One method to smooth random effects from one country is to do a DID estimation with a larger control group of unweighted countries:
+
+
+### DID Estimation: OECD sample
+The donor pool consists of 14 OECD countries. We will further on index the control countries with $c$: Let's first have a look at the CO2 emissions of the countries. We again load `carbontax_data.dta` into `dat` to get the whole donor pool. Press *edit* and *check* to show the plots with `ggplot` and `facet_wrap`.
+```{r dev="svg"}
+#< task
+# load data
+dat = read.dta("carbontax_data.dta")
+# draw a plot with year on x-axis and CO2 emissions on y-axis
+ggplot(data=dat, aes(x= year, CO2_transport_capita)) + geom_line(colour = "green4")+
+# add a facet_wrap command to show the plots of the different countries  
+  facet_wrap(~ country)+
+# add a vertical line for 1990
+  geom_vline(xintercept =1990, linetype = "dotted") +
+# add label  
+  labs(y="Metric tons CO2 per capita")
+#>
+```
+
+The graphs show quite different levels of CO2 emission values from transport. They are high over the whole period in the United States and Canada and low in Poland. Within most countries, we can see that they follow an upward trend. The averaged value of per capita CO2 emissions from the OECD sample is $2.08\ t_{CO2}$. The pre-treatment mean $\bar{y}_c^{(0)}$ is $1.81005\ t_{CO2}$. The post-treatment mean $\bar{y}_c^{(1)}$ is $2.57596\ t_{CO2}$.
+
+We estimate the DID model with `lm` based on data from the whole donor pool. A part of the code is given. Create the interaction term and use `lm` to regress `CO2_transport_capita` on the right variables. Store the results in `did_Sweden_new`. Then show the `summary` of `did_Sweden_new`. 
+```{r}
+#< task
+# create a treated dummy "treated"
+dat$treated = ifelse (dat$country == "Sweden",1,0)
+# create a time dummy "post"
+dat$post = ifelse(dat$year >= 1990,1,0)
+#>
+# create an interaction between post and treated
+dat$Sweden_post = dat$post * dat$treated 
+# use lm() to perform the regression and store the results ins did_Sweden_new
+did_Sweden_new = lm (CO2_transport_capita ~ treated + post + Sweden_post, data = dat)
+#show the summary of did_Sweden_new
+summary(did_Sweden_new)
+```
+
+
+We find:
+$$\Delta\Delta y_1 = \Delta \bar{y}_1 - \Delta \bar{y}_c = (2.3459-1.7937)- (2.5760-1.8100) = -0.2137$$
+It represents the estimated treatment effect from VAT and carbon tax in Sweden. We estimate an emission reduction of $0.214\ metric\ tons$ or $-0.2137/2.5760 = -8.3\%$ of CO2 in an average post-treatment year compared to the mean of the OECD sample.
+
+The author uses standard errors that are clustered by `country` to control for geographical correlation (cf. Andersson, 2019, Appendix). We repeat the regression, using the `felm()` command from the `lfe` package to obtain clustered standard errors. The info box provides further information on `felm()`. 
+#< info "felm"
+The `felm` command is used to fit linear models. It offers a wider range of features compared to the `lm` command. The syntax differs as well and is as follows:
+
+`felm(formular | factors | IV specification | cluster specification | data)`
+
+The specifications that aren't used should be set to `0`. It offers an easy way to compute clustered standard errors by assigning a `clustervariable`. So we can obtain unbiased standard errors of OLS coefficients.
+
+Note that the values of the estimators don't change when using clustered standard errors.
+
+Have a look at https://cran.r-project.org/web/packages/lfe/lfe.pdf to learn more.
+
+#>
+
+We use `felm()`to estimate our DID model and store the results in `did_clustered`. In a second step, we use `stargazer()` to compare the results from `did_Sweden_c`and `did_Sweden_clustered`. Press *check* to run the code.
+```{r results = 'asis'}
+#< task
+# Load package 'lfe'
+library(lfe)
+# DID estimation
+did_Sweden_clustered = felm(CO2_transport_capita ~ treated + post + Sweden_post |0|0| country, data = dat )
+
+# Load package 'stargazer'
+library(stargazer)
+
+# show regression results of did_Sweden_new and did_Sweden_clustered
+stargazer(did_Sweden_new, did_Sweden_clustered, type = "html",
+          column.labels = c("DID", "DID clustered"))
+#>
+```
+
+*Andersson shows the result of a DID estimation compared to the OECD sample in his Appendix.*
+
+#< award "Gazing stars"
+Isn't it wonderful to gaze at the stars? The `stargazer()` function makes it easy for you to do so. As well it helps you to compare and interpret more than one regression result at a time.
+#>
+
+Have a look at the output of `stargazer()`. As you can see, the values for the estimated coefficients do not change when using clustered standard errors. The stars next to the values indicate the significance level. Three stars mean a p-value smaller than $0.01$. That says the probability is $<1\%$ that we find an estimator that is at least as high as the one obtained, in case that the true correlation was $0$. The standard errors are displayed in the brackets below the values. As you can see, controlling for local clustering in our case results in a smaller standard error for `did_Sweden_clustered` of $0.082$ compared to $0.413$. As well the p-value changes. In our second model, per capita CO2 emissions from transport are significant at $1\%$. 
+
+To end with DID estimation, plot the Swedish CO2 emissions and the mean of the OECD countries. Press *check* to run the code. (Emissions are compiled as`CO2_Sweden` and `CO2_OECD` in the `descr_Sweden.Rds`file).
+```{r dev="svg"}
+#< task
+#Plot
+dat = readRDS("descr_Sweden.Rds")
+  ggplot(data=dat, aes(x= year)) +
+  geom_line(aes(y=CO2_OECD, colour= "OECD CO2")) + 
+  geom_line(aes(y=CO2_Sweden, colour="Sweden CO2")) + 
+  geom_vline(xintercept =1990, linetype = "dotted") +
+  labs(y="Metric tons per capita (CO2 from transport)")+
+  scale_color_manual(values = c("OECD CO2" = "grey", "Sweden CO2" = "green4"))
+#>
+```
+*This plot corresponds with figure 3 "Path Plot Of Per Capita CO2 Emissions From Transport During 1960-2005: Sweden Versus The OECD Average Of My 14 Donor Countries" on page 11 of the paper.*
+
+Before 1990 the emissions seem to follow a similar trend but the fit is poor in the 1980s. In 1990 the values are almost identical with $2.36\ t_{CO2}$ for the OECD sample and $2.31\ t_{CO2}$ for Sweden. After 1990 the development differs as CO2 emissions in the OECD sample rise faster than in Sweden. In 2005 the average per capita emissions from transport in the 14 OECD countries are $2.76\ t_{CO2}$ whereas in Sweden they are $2.49\ t_{CO2}$. We find an estimator that behaves, as we expected as it is negative. Does that mean that our estimator is consistent and we can interpret the effect as a causal effect?
+
+The poor fit between the OECD sample and Sweden in the last ten years before treatment indicates that the parallel trend assumption might be violated. Thus, the **DID estimator might be biased** and our treatment effect cannot be estimated consistently. A possible explanation is that the estimator neither accounts for substitution effects between gasoline and diesel or modes of transports nor trends like the level of urbanization or the number of motor vehicles. So, we can still have endogeneity problems. Within the next exercise, you will learn a method that includes different predictors to control for various factors that can be removed from the error term. The method aims to find a combination of countries that resembles pre-treatment Sweden in the outcome of interest and the trend in predictor values. Thus, this method relaxes the parallel trend assumption. Instead of unweighted countries, it finds a control group with weighted countries, which we will call **Synthetic Sweden**.
+
+
+## Exercise 2.2 Synthetic control method - background
+
+In this exercise, we want to get to know the **synthetic control method** (SCM) (cf. Abadie, Diamond, and Hainmueller, 2010). It is a method for comparative case studies that generates a synthetic control unit. As well as the DID estimator, the method aims to identify the effects of an intervention, which is in our case the Swedish energy tax reform. The goal of the former analysis is to measure the post-treatment effect of the energy tax reform on CO2 emissions from transport in Sweden. Again, we want to find a consistent estimator to measure causal effects.
+
+- We define that there are $J+1$ units. The first unit with $j=1$ is the treated unit. In our example, it is Sweden as it is affected by the policy intervention (tax reform). $j=2,...,J+1$ are potential comparison units that are given by the OECD sample (donor pool). We call them untreated units. 
+
+- We have $t = 1,2,...,T$ time periods with $(1,2,...,T_0)$ pre-intervention periods (before the tax reform) and $(T_0+1, T_0+2,...,T)$ post-intervention periods (after the tax reform).
+
+The emissions are our outcome of the intervention of interest which we denote as $y_{jt}$ for unit $j$ in time $t$. The effect of the intervention is formalized as the difference between emissions from transport when exposed to treatment $y^{(1)}_{jt}$ and emissions without treatment $y^{(0)}_{jt}$. 
+
+For our country of interest Sweden we find:
+
+- $y^{(1)}_{1t}$ as emissions when exposed to an intervention. It corresponds to the actual per capita CO2 emissions values from Sweden after $T_0$.
+
+- $y^{(0)}_{1t}$ as the outcome variable with no intervention. Since there is no Sweden without the tax reform, we cannot observe the values for $y^{(0)}_{1t}$ after $T_0$.
+
+We want to find the treatment effect $\tau_{1t}$ of the energy tax reform 1990/1991 in Sweden in the post-treatment period $t > T_0$. Again, we assume that the treatment effect can consistently be estimated through $\hat{\beta}_{1t}$. We therefore measure the distance between the actual outcome $y^{(1)}_{1t}$ and the outcome in the absence of the intervention $y^{(0)}_{1t}$. As the CO2 emissions in Sweden without the tax reform $y^{(0)}_{1t}$ aren't observable in the post-treatment period, we want to generate a synthetic counterpart **Synthetic Sweden** ${y}^{(0)}_{1t}$. Synthetic Sweden is a weighted combination of untreated units that should resemble Sweden as best as possible. Hence, we assign weights $w = w_2,...,w_{J+1}$ with $w_j \geq 0$ to each untreated country $j=2,...,J+1$ of the OECD donor pool. We find an estimator for the synthetic counterpart $\hat{y}^{(0)}_{1t}$ formalized as:
+
+$$\hat{y}^{(0)}_{1t} = w_2\ y_{2t} +...+w_{J+1}\ y_{J+1 t} = \sum_{j=2}^{J+1} w_j\ y_{jt} $$
+
+Abadie, Diamond, and Hainmueller show that under certain regulatory conditions, the treatment effect $\tau_{1t}$ can be estimated consistently, if we find optimal weights $w^*$ such that $\hat{y}^{(0)}_{1t}$ matches the outcome of the treated unit for $t< T_0$. Then $\hat\beta_{1t}$ measures the post-treatment effect formalized as:
+
+$$ \hat\beta_{1t}= {y}_{1t}^{(1)} - \hat{y}_{1t}^{(0)} = {y}_{1t}^{(1)}- \sum_{j=2}^{J+1}{w^*_j}\ y_{jt} $$
+(cf. Abadie, Diamond, and Hainmueller, 2010, p.495).
+
+If we find a consistent estimator, we can take the obtained post-treatment effect as a causal effect. Thus, if we find optimal weights $w^*$, we can measure, how the energy tax reform affected the per capita CO2 emissions from transport in Sweden. One regulatory condition that Abadie, Diamond, and Hainmueller define, is that the pre-intervention period has to be large. Because then the size of the bias caused by time-varying unobserved confounders between the outcome variable for the treated unit and the synthetic control converges to zero (cf. Abadie, Diamond, and Hainmueller, 2010, p.495). They as well introduce an automatic approach that searches for optimal country weights, that we will get to know in the following exercise (cf. Abadie, Diamond, and Hainmueller, 2011). But first, we want to have a look at the underlying ideas.
+
+So how do we determine the weights $w^*$? We want to give weights to the untreated units, such that their combination best resembles the pre-intervention values of the treated unit. Those weights have to sum up to $1$. Remember that one weakness of the DID method was, that it did not control for variables that affect the CO2 emissions. As opposed to this, the SCM offers the possibility to add control variables that we further on will call **predictors**. Possible predictors in our example would be GDP per capita, vehicles per capita, gasoline consumption, or urbanization levels. So we would like to find a combination of countries that resembles Sweden best, regarding CO2 emissions as well as predictor values. Andersson emphasizes that this relaxes the parallel trend assumption, as effects of unobserved confounders on the outcome variable can over time when the SCM is used (cf. Andersson, 2019, p.10). Abadie and Gardeazabal introduce pre-intervention predictors $x_k$ with $k = 1,..., K$ number of predictors:
+
+- $x_{k1}$ represents the pre-intervention predictor values for Sweden.
+
+- $x_{kj}$ stores pre-intervention predictor values for the control units ($j=2,...,J+1$)
+(cf. Abadie and Gardeazabal, 2003, p.117).
+
+Note that $x_{k1}$ and $x_{kj}$ don't have an index t, as the predictors are averaged over a defined pre-treatment period. Given GDP per capita, vehicles per capita, gasoline consumption, and urbanization level as control variables, $x_{k1}$ would just store four values. For example the average of the predictors over the 10 years before treatment.
+
+Because we want to take the predictor means into account, we assign weights $w$ that minimize the distance between $x_{k1}$ for the treated unit and $x_{kj} w_{j}$ with $j=2,..,J+1$ for the synthetic control, regarding $v$. So we find optimum weights $w^*(v)$ by minimizing:
+
+$$w^\ast(v) = arg\underset{w} min \sum_{k=1}^{K}v_k(x_{k1}- \sum_{j=2}^{J+1}x_{kj}w_j)^2$$
+
+The coefficient vector $v = (v_1,...,v_K)$ represents the importance of the predictors before the intervention. As well as the country weights, the predictor weights have to sum up to $1$. So we want to find a synthetic counterpart, that does not only reproduce the pre-treatment emission values of Sweden as best as possible. It should also resemble Sweden regarding some pre-treatment predictor values. For every set of predictor weights $v$, a synthetic control $w(v)$ can be found. 
+
+There are several ways to find optimal predictor weights $v^*$. One possibility is called "Standard Synthetic Control". It is presented by Abadie and Gardeazabal, 2003 and Abadie, Diamond, and Hainmueller, 2010. The automatic approach, that we will use in the next exercise is also based on this method. It minimizes the root mean squared error (RMSE) of the outcome variable during the pre-intervention period. Therefore, $y_{1t}^{pre}$ (or $Z_1$) and $y_{jt}^{pre}$ (or $Z_0$) with $j=2,..,J+1$ and $t = 1,2,..,T_0$ are defined. In our example, $y_{1t}^{pre}$ stores per capita CO2 emission values for the pre-treatment period of Sweden and $y_{jt}^{pre}$ the same for the untreated units, over which the RMSE is to be minimized. 
+
+Klößner et al. 2018 describe the precise procedure of the Standard Synthetic Control: It defines $x_{k1}^{pre}$ and $x_{kj}^{pre}$ which store pre-treatment predictor means and $y_{1t}^{pre}$ and $y_{jt}^{pre}$ containing pre-treatment CO2 emissions for Sweden and the control units. For any given predictor weights (e. g. equal weights for all predictors), this approach uses the predictor means to determine weights $w^*(v)$ by minimizing:
+
+$$w^*(v) = arg\underset{w}min\sum_{k=1}^{K}v_k(x^{pre}_{k1}- \sum_{j=2}^{J+1}x^{pre}_{kj}w_j)^2$$
+For predictor weights $v^*$, the distance between $y_{1t}^{pre}$ and $y_{jt}^{pre} w_j^*(v)$ is then minimized for $t^{pre}= 1,2,...,T_0$ and $j=2,..,J+1$:
+
+$$v^* = arg\underset{v}min\sqrt{\frac{1}{t^{pre}}\sum_{t=1}^{T_0} (y_{1t}-\sum_{j=2}^{J+1} w_j^\ast(v) y_{jt})^2}$$
+
+
+The so found optimal donor weights $w^*(v^*)$ can then be used to find the synthetic counterpart in the post-treatment period $t > T_0$:
+
+$$\hat{y}^{(0)}_{1t} =  \sum_{j=2}^{J+1}w_j^\ast\ y_{jt}$$
+In our example, for a good synthetic control, the estimated values before 1989 should resemble the Swedish CO2-emissions. After 1989 $\hat{y}^{(0)}_{1t}$ would then describe, how the emissions would have developed without the intervention of the Swedish tax reform. Hence, $\tau_{1t}$ can be consistently estimated by $\hat{\beta}_{1t}$ for $t>T_0$ (cf. Klößner et al. 2018, p.4).
+
+Another way to find $v^*$ is the use of a cross-validation technique that is introduced by Abadie, Diamond, and Hainmueller, 2015. Therefore, they divide the pre-treatment period into a training period $t^{train}=1,...,t_0$ and a validation period $t^{valid}=t_0+1,...,T_0$. In a first step, they search for training country weights which they afterwards use to select predictor weights, such that the resulting synthetic control minimizes the root mean square error over the validation period. 
+
+Have a look at the infobox for more detailed information.
+
+#< info "Cross Validation"
+Klößner et al. 2018 describe more detailed what happens in the training and validation periods: In the training period, it is firstly searched for training country weights $w^{*_{train}}(v)$ such that the distance between the predictor means $x_{k1}^{train}$ and $x_{kj}^{train}w_j$  for $j=2,...,J+1$ is minimized in the training period:
+
+$$w^{*_{train}}(v) = arg\underset{w}min\sum_{k=1}^{K}v_k(x^{train}_{k1}- \sum_{j=2}^{J+1}x^{train}_{kj}w_j)^2$$
+In the validation period, the predictor weights $v^{*_{valid}}$ are found by minimizing the RMSE as described above for the outcomes of interest for $t=t_0+1,...,T_0$ for $y_{1t}^{valid}$ and $y_{jt}^{valid}w_j^{*_{train}}(v)$ by making use of the training weights $w^{*_{train}}(v)$:
+
+$$v^{*_{valid}} = arg\underset{v}min\sqrt{\frac{1}{t^{valid}}\sum_{t=t_0+1}^{T_0} (y_{1t}-\sum_{j=2}^{J+1} w_j^{*_{train}}(v) y_{jt})^2}$$
+
+Afterwards, the so found predictor weights $v^{*_{valid}}$ are used to find main donor weights $w^{*_{main}}$ for the validation period by minimizing:
+$$w^{*_{main}}(v^{*_{valid}}) = arg\underset{w}min\sum_{k=1}^{K}v_k^{*_{valid}}(x^{valid}_{k1}- \sum_{j=2}^{J+1}x^{valid}_{kj}w_j)^2$$
+
+Those weights $w^{*_{main}}(v^{*_{valid}})$ are then used to calculate the values for the outcome of interest for the synthetic control in the post-treatment period $t>T_0$ by:
+
+$$\hat{y}_{1t}^{(0)} = y_{jt} w_j^{*_{main}}(v^{*_{valid}}) \ for\ t>T_0$$
+(cf. Klößner et al. 2018, p.3).
+#>
+
+Andersson mentions that $v$ can be chosen through a data-driven procedure, but also by assigning weights based on empirical findings in the literature (cf. Andersson, 2019, Appendix). Abadie, Diamond, and Hainmueller also remark that the cross-validation technique yields robust results compared to the standard synthetic control (cf. Abadie, Diamond, and Hainmueller, 2015, p.502).
+
+As mentioned above, we can rely on an automatic approach. R offers a package that solves the optimization problems for us and makes validation tests possible. In the next exercise, you will learn how to generate an estimator for **Synthetic Sweden** by using this package to solve for the optimal weights and estimate the treatment effect $\tau_{1t}$.
+
+
+## Exercise 2.3 Synthetic control method - Sweden
+
+In this exercise, we want to design *Synthetic Sweden* using the principles that we learned in the theoretical background. Therefore, we have a set of 15 countries ($j = 1,..., J$) and 46 periods ($t = 1,...,T$). Since Sweden is the observed unit, there are 14 remaining control units (donor pool) that can contribute to *Synthetic Sweden*. In our case, we want to intercede in 1989. So the data frame provides 30 years of pre-intervention periods ($1, 2,...,T_0$). In this time, *Synthetic Sweden* should reproduce the level and trend of CO2 emissions from the transport sector in Sweden. In the post-intervention years from 1990 until 2005 ($T_0+1, T_0+2,..., T$) *Synthetic Sweden* should simulate the development of CO2 emissions of Sweden in the absence of the tax intervention.
+
+We use the `Synth()` command which searches for the optimum weights ($w^*(v^*)$) that identify the synthetic control for Sweden by solving the given optimization problem (cf. Abadie, Diamond, and Hainmueller 2015). We will use four predictors: GDP per capita (in US dollars), number of motor vehicles (per 1000 people), per capita gasoline consumption (in kg oil-equivalents) and urban population (as percentage of total population). To improve the synthetic control we can add special predictors. We add three lagged years of CO2 emissions: 1989, 1980 and 1970 (CO2 in metric tons). They store the average per capita CO2 emissions from transport for the chosen years.
+
+We again use `carbontax_data.dta` as our data frame. Press **edit** and **check** to load `carbontax_data.dta`.
+```{r}
+#< task
+# Load carbontax_data.dta
+library(foreign)
+dat = read.dta("carbontax_data.dta")
+#>
+```
+
+To generate a synthetic control, we need $x_{k1}$ and $x_{kJ+1}$ which store the means of predictor values for Sweden and the control units. The notation in the `Synth` package differs: $X_1$ stores pre-treatment predictor means for Sweden and $X_0$ stores pre-treatment predictor means for the control countries. To search for the optimal predictor weights $v$, furthermore the package minimizes the RMSE of the outcome variable during the pre-intervention period. It therefore defines two more matrices $Z_1$ ($\stackrel{\wedge}=y_1^{pre}$) and $Z_0$ ($\stackrel{\wedge}=y_{J+1}^{pre})$ which store pre-treatment CO2 emissions values for Sweden and the control units. If you want to have a look at how they can be designed manually, click <ahref="http://ftp.uni-bayreuth.de/math/statlib/R/CRAN/doc/packages/Synth.pdf" target="_blank">here</a>). But there is a more convenient way, provided by the `Synth` package to prepare the data. Have a look at the infoboxes to learn more.
+
+#< info "Synth package"
+The `Synth package` offers a method for comparative case studies that generates a synthetic control unit. It requires a minimum of four matrices X1, X0, Z1 and Z0 to construct a synthetic control unit. At first, you need to reorganize the panel data set into a suitable form for `Synth()`. You can use `dataprep()` to conveniently extract the necessary inputs. The command `synth.out` searches for the optimal combination of weights.
+
+Therefore, it uses a constrained quadratic optimization function (more precisely the interior point method) from the `kernlab` package. $W^*(V)$ should approximate Sweden concerning several observed predictors $V$ such that Sweden is best resembled by the synthetic control unit. To find optimal V-weights (predictor weights), `synth.out` uses an optim() function where several algorithms can be chosen e. g. Nelder-Mead or BFGS. The authors remark that there is no guarantee to find global minimum V-values. So, their method runs the optimization procedure two times. Once with the values obtained by `optim()` and once by V-weights that are set equal for all predictors. Finally, the return with lower losses is chosen (cf. Abadie, Diamon and Hainmueller, 2011). As well, their approach allows to assign customed $V$-weights.
+
+To illustrate the results, `synth.tables()`, `path.plot()` and `gaps.plot()` can be used. For further information acknowledge Abadie, Diamond, and Hainmueller 2011, Abadie and Gardezabal 2003 and Abadie, Diamond, and Hainmueller 2010.
+#>
+
+The `dataprep()` command is used to prepare the data for `synth.out()`. With it, the matrices can be obtained in the right form. Have a look at the infobox to get an overview.
+
+#< info "dataprep()"
+`dataprep()` requires several input to be entered: 
+`foo` defines the data frame with panel data. It is necessary to provide a vector of predictors, their operator (e.g. mean) and the time-period which is applied to these variables. As an example, we use the mean of the years 1980-1989 of the number of motor vehicles and the percentage of urban population as predictors.
+
+It is also possible to define special predictors with heterogeneous operators and time periods like the lagged year 1970 of CO2 emissions.
+
+`dependent` defines the dependent variable (CO2 per capita emissions from transport). 
+`unit.variable`, `unit.names.variable`, `time.variable` and `treatment.identifier` define the treated unit (Sweden with country number 13).
+
+`controls.identifier` gives the control units (OECD countries apart from Sweden).
+
+`time.optimize.ssr` is the pre-treatment period and `time.plot` our post-treatment period.
+
+```{r eval = FALSE}
+dataprep.out = dataprep(
+  foo = dat,
+  predictors = c("motor vehicles", "urban pop"),
+  predictors.op ="mean",
+  time.predictors.prior = 1980:1989,
+  special.predictors = list(
+    list("CO2_transport_capita", 1970, "mean"),
+    dependent = "CO2_transport_capita",
+    unit.variable = "Countryno",
+    unit.names.variable = "country",
+    time.variable = "year",
+    treatment.identifier = 13,
+    controls.identifier = c(1:12, 14:15),
+    time.optimize.ssr = 1960:1989,
+    time.plot = 1960: 2005))
+```
+To show  the matrizes $X_1$, $X_0$, $Z_1$ and $Z_0$ the following syntax can be used: `dataprep.out$X1`
+#>
+
+Press *check* to run the code. It will take a moment to compute the results.
+```{r}
+#< task
+# load Synth package
+library(Synth)
+# prepare data with dataprep()
+dataprep.out = dataprep(
+  foo = dat,
+  predictors = c("GDP_per_capita","vehicles_capita","gas_cons_capita","urban_pop"),
+  predictors.op ="mean",
+  time.predictors.prior = 1980:1989,
+  special.predictors = list(
+    list("CO2_transport_capita", 1989, "mean"),
+    list("CO2_transport_capita", 1980, "mean"),
+    list("CO2_transport_capita", 1970, "mean")),
+    dependent = "CO2_transport_capita",
+    unit.variable = "Countryno",
+    unit.names.variable = "country",
+    time.variable = "year",
+    treatment.identifier = 13,
+    controls.identifier = c(1:12, 14:15),
+    time.optimize.ssr = 1960:1989,
+    time.plot = 1960:2005)
+# generate synthetic counterpart based on the output of dataprep()
+synth.out = synth(data.prep.obj = dataprep.out, method = "ALL" )
+
+#>
+``` 
+
+There are four defined predictors: `GDP_per_capita`, `vehicles_capita`, `gas_cons_capita` and `urban_pop`. They give the possibility to account for substitution effects like from gasoline to diesel or between modes of transport. The author also added three lagged years of CO2 emissions `CO2_transport_capita` as additional numeric predictors for 1989, 1980 and 1970. That means that CO2 per capita emissions from transport should be used with averaged values over the given years. The dependent variable is `CO2_transport_capita`. The treated unit Sweden is defined through `Countryno` (13) and `country` (Sweden), as well as the control units (1:12, 14:15). The pre-treatment period is from 1960 - 1989 and the post-treatment period from 1990 - 2005. `synth.out()` extracts its arguments from the `data.prep` list and searches for the synthetic control unit.
+
+We can see three outcomes: `MSPE (LOSS V)`, `solution.v` and `solution.w`. The first corresponds to the loss that is associated with the equation that searches for $v^*$. It is minimized by the `synth.out()` command. The second outcome shows the found predictor weights (the first value corresponds to the first predictor) and the third outcome gives the country weights in *Synthetic Sweden*.
+
+Let us first have a look at the matrices that we generated for Sweden. Use the syntax presented in the info box to show $X_1$. Also show the head of $Z_1$.
+
+```{r}
+#< task
+#>
+#Show X1
+dataprep.out$X1
+#Show head of Z1
+head(dataprep.out$Z1)
+
+```
+As described, $X_1$ and $X_0$ store the average of each defined predictor over the specified years in `time.predictors.prior = 1980:1989` for Sweden ($X_1$) and all control units ($X_0$). $Z_1$ and $Z_0$ store pre-treatment CO2 emissions for Sweden and the control units. The `dataprep()` command stores the information in the right form so that it can be used by the `synth.out()` command to search for the optimal weights.
+To illustrate the results `Synth` packages offers some functional tools:
+
+### Tables
+
+We can create customized summary tables and figures that make it easier to visualize and analyse the results. Tables are produced by using the `synth.tab()` function. There are four types of tables.
+
+Run the code below by pressing *check* and have a look at the first type.
+```{r}
+#< task
+# Preparation for tables:
+Table = synth.tab(dataprep.res = dataprep.out,
+                          synth.res = synth.out)
+
+# Table of predictor means before treatment
+Table$tab.pred[1:7, ]
+#>
+```
+*This table can also be found on page 13 in the paper as Table 1 "CO2 Emissions From Transport Predictor Means Before Tax Reform".*
+
+`tab.pred` shows the values of the chosen predictors for the treated unit, the synthetic control unit and the mean of the donor pool **before** the tax reform. The table shows the pre-treatment mean values of the predictors for Sweden, Synthetic Sweden, and the unweighted mean of the OECD sample countries. For all chosen predictors, except from gasoline consumption, the values for Sweden and Synthetic Sweden fit quite well. The values from the OECD sample mean differ substantially.
+
+
+`tab.v` depicts the $v$-matrix that contains the calculated values of predictor weights. Use `tab.v` to generate the table.
+```{r}
+#< task
+# Table of predictor weights
+#>
+Table$tab.v[1:7, ]
+```
+
+This table displays the predictor weights $v^*$ depending on their predictive power on the outcome. It assigns the highest weights to CO2 emissions from transport in 1980 (28.4%), GDP per capita (21.9%) and urban population (21.3%). Gasoline consumption plays a minor role (1.3%) which corresponds to the poor fit in the first table.
+
+
+`tab.w` generates the country weights ($w^*$) that give an optimal combination of the donor pool countries. Press *check* to run the code.
+```{r}
+#< task
+# Table of country weights in "Synthetic Sweden"
+Table$tab.w[1:15, ]
+#>
+``` 
+*This corresponds with Table 2 in the paper on page 12 "Country Weights in Synthetic Sweden".*
+
+The $w^*$-weights from the third table demonstrate that Sweden is best reproduced by a combination of Denmark (38.4%), Belgium (19.5%), New Zealand (17.7%), Greece (9%), the United States (8.8%) and Switzerland (6.1%). The other countries play a minor role with weights smaller than 1%. The large weight of Denmark can be explained by the similarity to Sweden in many social and economic dimensions. Also to Belgium and New Zealand close resemblances exist in the growth rate of GDP (Belgium) and urbanization structures (New Zealand).  Those three countries alone account for 75.6% of *Synthetic Sweden*.
+
+`table.loss` shows the losses from the minimization of the equations that search for optimal country and predictor weights, as presented in the exercise before. `LOSS (V)` is associated with the equation that searches for the optimal predictor weights $v^*$. `LOSS (W)` is associated with the equation that searches for optimal country weights $w^*(v)$ . Press *check* to run the code. 
+```{r}
+#< task
+Table$tab.loss[1, ]
+#>
+```
+The `synth.out()` command aims to minimize those losses. As we can see, in our example they are quite small.
+
+#< award "Synth"
+You have learned how to prepare your data with `dataprep()` and how to find a synthetic control group by using the `Synth()` package. As well you are now able to extract the main results and show them in tables. That is really functional, isn't it?
+#>
+
+### Plots
+
+Do you remember the plot, that illustrated the CO2 emissions from transport in Sweden and the mean of the OECD sample? There was a poor fit between the emissions in the years from 1980 to 1989. Let's plot the emissions of *Synthetic Sweden* to see if they fit Sweden better. Press *check* to plot the per capita CO2 emissions from transport for Sweden and Synthetic Sweden.
+
+```{r dev="svg"}
+#< task
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out,
+   Ylab = "Metric tons per capita (CO2 from transport)", Xlab = "year",
+   Ylim = c(0 , 4.0), Legend = c("Sweden", "synthetic Sweden"), 
+   Legend.position = "bottomleft")
+  abline(v=1990, lty = 3)
+#>
+```
+*The plot can be seen on page 12 in the paper as Figure 4 "Path Plot Of Per Capita CO2 Emissions From Transport During 1960-2005: Sweden Versus Synthetic Sweden".*
+
+The path plot of emissions from transport in Sweden and *Synthetic Sweden* shows that they track each other closely, even in the 10 years before treatment. The distance that can be seen after 1990 describes the reduction in CO2 emissions. Also show the emission values for *Synthetic Sweden* from 1990 until 2005 They are computed using the actual emission values of the control countries (found in `Y0plot` as an element of `dataprep.out`) and their assigned weights (found in `solution.w` as an element of `synth.out`). Press *check* to run the code.
+```{r}
+#< task
+treated= dataprep.out$Y0plot%*%
+  synth.out$solution.w
+tail(treated,16)
+#>
+```
+
+In 2005 the per capita CO2 emissions from transport in Sweden were $2.4907\ metric\ tons$. The value for the synthetic control unit without intervention was $2.8453$. In comparison: the unweighted mean of the OECD sample was $2.755\ metric\ tons$.
+
+We also want to compute the gaps in emissions between Sweden and *Synthetic Sweden* after the intervention. Press *check* to run the code.
+```{r}
+#< task
+gaps= dataprep.out$Y1plot-(
+  dataprep.out$Y0plot%*%
+    synth.out$solution.w)
+tail(gaps,16)
+#>
+```
+
+In 2005 the emission reduction from transport in Sweden was $-0.35\ metric\ tons$ CO2 per capita compared to *Synthetic Sweden* which means an emission reduction compared to the sample mean of $2.755\ metric\ tons$ of $-12.5\%$.
+
+To end this exercise, show how the gap between Sweden and *Synthetic Sweden* changed over time. Fill in the right values for the placeholders to plot the gaps.
+```{r dev="svg"}
+#< fill_in
+#gaps.plot(synth.res = __, dataprep.res = __, 
+#          Ylab = "Gap in per capita CO2 emissions from transport", Xlab = "year", 
+#          Ylim = c(-0.5, 0.5), Main = NA)
+#>
+#sample solution
+gaps.plot(synth.res = synth.out, dataprep.res = dataprep.out, 
+          Ylab = "Gap in per capita CO2 emissions from transport", Xlab = "year", 
+          Ylim = c(-0.5, 0.5), Main = NA)
+```
+*This plot can be seen at page 14 in the paper as Figure 5 "Gap In Per Capita CO2 Emissions From Transport Between Sweden And Synthetic Sweden"*
+
+In the pre-treatment period (before 1990) the difference between the two trajectories is rather small. In the post-treatment period, stronger reductions can be seen, correlating with the introduction and increase of VAT and carbon tax. The reduction in 2005 was $-0.35\ metric\ tons$ or $12.5\%$. In an average post-treatment year, it was $10.9\%$. In 2005 Sweden had a population of 9.04 million people which leads to a total emission reduction of $3.2\ million\ tons\ of\ CO2$ in that year (cf. Andersson, 2019, p.14).
+
+
+## Exercise 2.4 Placebo studies
+
+After insights in the theory behind SCM and the `Synth()` command, this exercise demonstrates the application of **placebo tests**. to generate a synthetic counterpart. There is still a risk, that the estimator is biased and the estimated effect is not causal. To **validatie the results** and check whether the estimation is plausible, we do placebo tests. They iteratively apply the synthetic control method after reassigning the intervention to units and periods where the interventions did not occur. This approach allows us to compare a set of placebo effects to the intervention that actually occurred and gives information whether the actual effect is rather large or small compared to a randomly chosen date or compare unit (cf. Abadie, Diamond, and Hainmueller, 2011, p.13 ff.). Possible divergences can be shown and if they don't exist the results can be seen as causal effects of carbon tax and VAT on CO2 emissions. Large placebo effects suggest the opposite.
+
+Press **edit** and **check** to load `carbontax_data.dta` and assign it to `dat` as in the exercise before.
+```{r}
+#< task
+dat= read.dta("carbontax_data.dta")
+#>
+```
+
+
+### In-time placebo test: 1980 
+Within the **in-time test** the year of treatment is shifted to 1980. So, the period of pre-treatment data is 10 years shorter (1960-1979). The code is quite like before. Only the periods in the `dataprep()` command differ. As well as an optimization method we choose `BFGS`which stands for Broyden-Fletcher-Goldfarb-Shanno algorithm and reduces the computing time. Press *check* to run the code. Again, it will take a moment.
+```{r}
+#< task
+dataprep.out = dataprep(
+  foo = dat,
+  predictors = c("GDP_per_capita","vehicles_capita","gas_cons_capita","urban_pop"),
+  predictors.op ="mean",
+  time.predictors.prior = 1970:1979,
+  special.predictors = list(
+    list("CO2_transport_capita",1979, "mean"),
+    list ("CO2_transport_capita", 1970, "mean"),
+    list("CO2_transport_capita", 1965, "mean")),
+  dependent = "CO2_transport_capita",
+  unit.variable = "Countryno",
+  unit.names.variable = "country",
+  time.variable = "year",
+  treatment.identifier = 13,
+  controls.identifier = c(1:12, 14:15),
+  time.optimize.ssr = 1960:1979,
+  time.plot = 1960:1990)
+
+synth.out = synth(data.prep.obj = dataprep.out, method = "BFGS")
+#>
+```
+The predictors are averaged over ten years between 1970 and 1979. Also, the author chose three different lagged years: 1965, 1970 and 1979. The `time.optimize.ssr` which defines the pre-treatment period is set from 1960 until 1979. The plot ends in 1990. We expect no major divergences between Sweden and the synthetic control within this time period. If the synthetic control method finds discrepancies when applied to a period without interventions, it would doubt the validity of the results. Let's plot the placebo test result. Just press *check*.
+```{r dev="svg"}
+#< task
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out,
+          Ylab = "Metric tons per capita (CO2 from transport)", Xlab = "year",
+          Ylim = c(0 , 3.0), Legend = c("Sweden", "synthetic Sweden"), 
+          Legend.position = "topleft")
+          abline(v=1980, lty = 3)
+#>
+```
+
+We can see that the plots between 1960 and 1990 fit well, so we can't observe an effect when we reassign the introduction of the carbon tax to 1980.
+
+*Anderson does two in-time-placebo test for 1980 and 1970. They can be found on p. 15 in the paper.*
+
+### In-space placebo test: Denmark
+
+As described before, Denmark is quite similar to Sweden which corresponds with the high $w$-weights. We want to investigate whether there are identifiable treatment effects when the method is applied to Denmark instead of Sweden. We call this **in-space placebo test**.
+
+We just change the treated unit from Sweden to Denmark. Press *check* to run the code to generate a *Synthetic Denmark* and plot the results. Again, this will take a moment.
+```{r}
+#< task
+dataprep.out = dataprep(
+  foo = dat,
+  predictors = c("GDP_per_capita","vehicles_capita","gas_cons_capita","urban_pop"),
+  predictors.op ="mean",
+  time.predictors.prior = 1980:1989,
+  special.predictors = list(
+    list("CO2_transport_capita",1989, "mean"),
+    list ("CO2_transport_capita", 1980, "mean"),
+    list("CO2_transport_capita", 1970, "mean")),
+  dependent = "CO2_transport_capita",
+  unit.variable = "Countryno",  unit.names.variable = "country",
+  time.variable = "year",
+  treatment.identifier = 4,
+  controls.identifier = c(1:3, 5:15),
+  time.optimize.ssr = 1960:1989, time.plot = 1960:2005)
+
+synth.out = synth(data.prep.obj = dataprep.out, method = "BFGS")
+
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out,
+          Ylab = "Metric tons per capita (CO2 from transport)", Xlab = "year",
+          Ylim = c(0 , 3.0), Legend = c("Denmark", "synthetic Denmark"), 
+          Legend.position = "topleft")
+          abline(v=1990, lty = 3)
+#>
+```
+
+An in-place placebo test with only one country cannot be interpreted meaningfully. To compare the magnitude of the results for Sweden, we have to reassign the placebo test to every unit of the control group. The synthetic control is a good estimation if the estimated effect doesn't fall inside the distribution of the placebo effects (cf. Abadie, Diamond, and Hainmueller, 2011, p.14 f.).
+
+
+### In-place placebo test: control units
+The `generate.placebos` command from the `SCtools` package provides an easy way to reassign treatment status to each unit and construct their synthetic counterparts. The synthetic control is a good estimation if the estimated effect doesn't fall inside the distribution of the placebo effects (cf. Abadie, Diamond, and Hainmueller, 2011, p.14 f.).
+
+
+#< info "SCtools()"
+The `SCtool` package provides extended analyses relating to `Synth`. It includes generating placebos, significance tests and a modelling of multiple treated units.
+
+With the `generate.placebos()` command a synthetic control for every control unit can be constructed. `mspe.plots`gives the opportunity to plot post/pre-treatment MSPE ratio for the treated unit and the placebos. Also, the ratios and a p-value can be computed by using `mspe.test`.
+
+If you want to know more about the `SCtools` package have a look at https://cran.r-project.org/web/packages/SCtools/SCtools.pdf
+#>
+
+Since the `generate.placebos()`command iteratively reassigns the control status to each of the units from the donor group, the computing time is around 10 minutes. 
+
+**Please just have a look at the code given in the chunk below, but do not run it**. 
+
+```{r optional = TRUE, eval = FALSE}
+#< task_notest
+# Run dataprep() as in the first example
+dataprep.out = dataprep(
+  foo = dat,
+  predictors = c("GDP_per_capita","vehicles_capita","gas_cons_capita","urban_pop"),
+  predictors.op ="mean",
+  time.predictors.prior = 1980:1989,
+  special.predictors = list(
+    list("CO2_transport_capita", 1989, "mean"),
+    list("CO2_transport_capita", 1980, "mean"),
+    list("CO2_transport_capita", 1970, "mean")),
+  dependent = "CO2_transport_capita",
+  unit.variable = "Countryno", unit.names.variable = "country",
+  time.variable = "year",
+  treatment.identifier = 13,
+  controls.identifier = c(1:12, 14:15),
+  time.optimize.ssr = 1960:1989,time.plot = 1960:2005)
+synth.out = synth(data.prep.obj = dataprep.out, method = "BFGS" )
+
+#reassign treatment status to each control unit (this can take several minutes)
+library(SCtools)
+tdf = generate.placebos(dataprep.out,synth.out, Sigf.ipop = 5)
+#>
+```
+
+The output of the chunk before is the variable `tdf` which stores the results of `synth.out` for every single unit of our donor group. The results are stored in the `placebos.Rds` file. We load the data into `tdf` and plot it. Press *check* to run the code.
+```{r dev="svg"}
+#< task
+# load results from geneate.placebos
+tdf=readRDS("placebos.Rds")
+# plot results 
+plot_placebos(tdf = tdf, discard.extreme = TRUE, mspe.limit = 20, xlab = 'Year')
+#>
+```
+*This figure can be found on page 16 in the paper as "Figure 7. Panel A: Permutation Test: Per Capita CO2 Emissions Gap In Sweden and Placebo Gaps For The Control Countries".*
+
+The figure shows the gaps for Sweden and 9 of the control countries. Some units were omitted because `Synth()` wasn't able to find a synthetic control due to much higher (US) or lower (Portugal and Poland) CO2 emissions than in the other countries. As well, all countries with a pre-treatment Mean Square Prediction Error (MSPE) that is more than 20 times higher than for Sweden (by `mspe.limit = 20`) were eliminated. The resulting plot demonstrates that it is unlikely to find a gap that is as large as the one obtained for Sweden (illustrated by the black line).
+
+The ratio of post/pre-treatment MSPE is the difference between the observed outcome of a unit and its synthetic counterpart, before and after treatment. Let's have a look at the post/pre-treatment MSPE ratios for Sweden and the placebos. 
+Press *check* to run the code
+```{r}
+#< task
+mspe.plot(tdf, discard.extreme= FALSE, mspe.limit = 20, plot.hist = FALSE, title = NULL,
+          xlab = "Post- / Pre-MSPE ratio", ylab = NULL)
+#>
+```
+
+The plot shows that Sweden with a large distance has the highest ratio which means that the distance of the outcome between pre- and post-treatment is highest in Sweden. A higher ratio means a small pre-treatment prediction error which corresponds with a good synthetic control.The p-value tells us how extreme the treated unit's ratio is, compared with that of the placebos. It is the proportion of units that have a ratio that is equal to or higher than that of the treated unit.
+
+We find the p-value with the `mspe.test()`command. Press *check* to run the code.
+```{r}
+#< task
+ratio=mspe.test(tdf)
+ratio$p.val
+#>
+```
+We find a p-Value of $0.067$. It is calculated by the estimation of in-space placebo effects for every country in our donor pool by comparing if the effects are larger or equal to the estimated results for Sweden. The interpretation of the value is that if we would randomly choose one of the control countries, the chance of finding a ratio, that is as large as the one for Sweden, would be $6.7\%$ or $\frac{1}{15}$.
+
+*The plot and the main results correspond with pages 16 and 17 in the paper.*
+
+### Leave-One-Out Distribution: Robustness Test
+
+We want to do another test, called **Leave-One-Out-Distribution-test**. It iteratively eliminates control countries from the control group to check the sensitivity of the results to changes in the $w$-weights (cf. Abadie, Diamond, and Hainmueller, 2015, p.506). Andersson tests the elimination of six control units since their country weights are higher than 0.1%: United States, Belgium, Denmark, Greece, New Zealand, and Switzerland. The results of the test are stored in the `leave_one_out_data.dta` file. Load the data frame into `dat`, show the head of `dat` and to plot the leave-one-out distribution. The exluded countries are shown by 'excl'. Press *check* to run the code.
+```{r dev="svg"}
+#< task
+#Load leave_one_out_data.dta
+dat=read.dta("leave_one_out_data.dta")
+head(dat)
+
+#Plot distribution
+ggplot(data=dat, aes(x=Year)) +
+      geom_line(aes(y= excl_unitedstates, col = "US excl."))+
+      geom_line(aes(y= excl_belgium, col= "BE excl."))+
+      geom_line(aes(y= excl_denmark, col = "DK excl."))+
+      geom_line(aes(y= excl_greece, col = "GR excl."))+
+      geom_line(aes(y= excl_newzealand, col = "NZ excl."))+
+      geom_line(aes(y= excl_switzerland, col = "CH excl."))+
+      geom_line(aes(y= synth_sweden, col ="Synthetic Sweden"))+ 
+      geom_line(aes(y= sweden, col = "Sweden"))+
+      scale_color_manual("",
+      values= c("US excl."="grey","BE excl."="grey","DK excl."="grey","GR excl."="grey",
+              "NZ excl."="grey","CH excl."="grey","Sweden"="black",
+              "Synthetic Sweden"="red"))+
+       labs(y="Per capita metric tons CO2 from transport")
+#>
+```
+
+The grey lines show the results of the SCM after the elimination of one country at a time. The red line represents *Synthetic Sweden* and the black one the actual per capita CO2 emissions from transport in Sweden. We can see that the leave-one-out synthetic controls only vary slightly. The range for the estimated emission reduction is $8.8\%$ when eliminating Switzerland up until $13\%$ when omitting Denmark. So even the most conservative estimation comes to a higher result than the DID method which assumed an emission reduction of $8.3\%$. 
+
+*Andersson does the leave-one-out-test on page 17 of the paper.*
+
+## Exercise 3  Swedish Economy
+In exercise 2 we coped with causal effects and endogeneity problems. We also did several placebo tests to verify our results. Still we cannot be sure, if the emission reduction was driven by the carbon tax (alone) or if it was also caused by different circumstances. Hence, in this exercise we want to think about two questions:
+
+1. Was the reduction in carbon dioxide emissions driven by economic circumstances i. e. an exogenous shock? Sweden was facing a recession around 1990. At the same time the energy tax reform took place. So maybe the emissions reduction was not driven by higher fuel taxes but by the weak economy that coincidentally fell into the same period. The literature provides evidence that greenhouse gas emissions are driven by economic growth. For example, the Stern Review shows that since 1850 developed countries have produced $70\%$ of all CO2 emissions with a high correlation between CO2 emissions per capita and GDP per capita (cf. The Stern Review, 2006, p.11). We want to know, whether the reduction in carbon dioxide emissions in Sweden was driven by economic circumstances.
+
+2. Was the carbon tax leading to a decrease in economic growth in Sweden? Sometimes there are political concerns against carbon taxation because of possible negative effects on industrial competitiveness and thus a reduction of economic growth (cf. Rydge, 2015, p.3). We want to investigate whether the introduction of the carbon tax had a negative impact on Swedish GDP compared to other countries. We therefore will build another Synthetic Sweden to compare economic growth levels. 
+
+The exercises in 3.1 are part of Andersson's paper. Exercise 3.2 gives additional information and thus is partly optional. It also revises a lot of the things you have learned before.
+
+
+## Exercise 3.1 Is GDP a relevant confounder?
+
+We need a part of the `descr_Sweden.Rds` file again. Press **edit** and **check** to load the data and select the relevant information for the following exercise.
+```{r}
+#< task
+# load data into dat
+dat= readRDS("descr_Sweden.Rds")
+# select relevant variables
+dat_GDP= select(dat, year, GDP_Sweden, GDP_synth, CO2_Sweden, gap_CO2, gap_GDP)
+# show head of data
+head(dat_GDP)
+#>
+```
+
+- `GDP_Sweden` contains per capita GDP data for Sweden. Andersson uses data from **Statistics Sweden**. It is expenditure-site real GDP, divided by population with the reference year 2005 given in SEK and converted to USD (the exchange rate is not given).
+
+- `GDP_synth` is GDP data calculated with the weights found by the synthethic control method in 2.3. We will call this synthetic counterfactual Synthetic Sweden(CO2) or Synth(CO2) further on.
+
+- `CO2_Sweden` stores per capita CO2 emission values.
+
+- `gap_CO2` stores the gaps in per capita CO2 emissions from transport between Sweden and Synthetic Sweden(CO2).
+
+- `gap_GDP` is the gap in GDP between Sweden and Synthetic Sweden(CO2). Andersson collected data on GDP from **Penn World Table** as GDP per capita, PPP in USD with the reference year 2005. To find values for synthetic Sweden(CO2), he takes the GDP per capita values for the countries stored in the `carbontax_data.dta` file adjusted with the found country weights from `synth.out`. 
+
+Let us first have a look at the economic development and CO2 emission values in Sweden between 1960 and 2005. A part of the code is given. Add a `grid.arrange()` command to show `GDP` and `CO2` side by side.
+
+```{r dev="svg"}
+#< task
+#Plot GDP
+GDP = ggplot(data = dat, aes(x=year, y=GDP_Sweden))+
+  geom_line(colour = "cadetblue")+
+          labs(y="GDP per capita in USD")+
+        geom_vline(xintercept=1990, linetype = "dotted")
+  
+  
+#Plot CO2 emissions
+CO2= ggplot(data = dat, aes(x=year, y=CO2_Sweden))+
+          geom_line(colour = "green4")+
+          labs(y="CO2 per capita in metric tons")+
+        geom_vline(xintercept=1990, linetype = "dotted")
+#>
+# show plots side-by-side
+grid.arrange(GDP, CO2, ncol = 2)
+
+```
+
+We can see that Sweden had to face a major recession in the early 90s. There has been another one from 1976-1978. Only after 1983 GDP begins to grow again until 1990 Still, the Swedish GDP more than doubled from around $11400\$$ per capita in 1960 to $23600\$$ in 1990. You can see an even greater recession in the years from 1991-1993 with a low of $22332\$$ GDP per capita. After 1993 the GDP grows up to $31800\$$ per capita in the year 2000. After a minor reduction between 2000 and 2003, it reaches its highest value in 2004 with $32446\$$. Compared with CO2 emissions, we can see that until 1970 both variables increase quite sharply. Between 1970 and 1980 they grow more slowly and with some ups and downs. After a dent in the beginning of the 80s both values again rise quite steadily reaching a peak in 1989/1990. While GDP increases quite strongly after the recession in 1991-1993, CO2 emissions grow much slower. 
+
+Let us also have a look at the gaps in GDP and CO2 emissions between Sweden and Synthetic Sweden(CO2). This allows us to see the effects of the recessions in Sweden and how they influenced the emission values. We show the gaps in GDP and CO2 side by side. Fill in the right variables to the code below to plot the gaps in GDP and the gaps in CO2.
+```{r}
+#< fill_in
+# gap_GDP = ggplot(data = dat, aes (x=year))+
+#           geom_rect(aes(xmin = 1976, xmax=1978, ymin= -1500, ymax = Inf), fill = "grey60")+ 
+#           geom_rect(aes(xmin= 1991, xmax= 1993, ymin= -1500, ymax= Inf), fill = "grey60")+
+#           geom_line(aes(y = ___), colour = "cadetblue")+
+#           labs(y="Gap in GDP (USD) Sweden - Synth(CO2)")
+# 
+# gap_CO2= ggplot(data = dat, aes(___)) +
+#           geom_rect(aes(xmin = 1976, xmax=1978, ymin= -0.4, ymax = Inf))+ 
+#           geom_rect(aes(xmin= 1991, xmax= 1993, ymin= -0.4, ymax= Inf))+
+#           geom_line(___, colour = "green4")+
+#           labs(y="Gap in  CO2 emissions (m. t.) Sweden - Synth(CO2)")
+# grid.arrange(___)  
+#>
+# sample solution
+# plot gaps from GDP
+gap_GDP = ggplot(data = dat, aes (x=year))+
+          geom_rect(aes(xmin = 1976, xmax=1978, ymin= -1500, ymax = Inf), fill = "grey60")+ 
+          geom_rect(aes(xmin= 1991, xmax= 1993, ymin= -1500, ymax= Inf), fill = "grey60")+
+          geom_line(aes(y = gap_GDP), colour = "cadetblue")+
+          labs(y="Gap in GDP (USD) Sweden - Synth(CO2)")
+# plot gaps from CO2
+gap_CO2= ggplot(data = dat, aes(x=year)) +
+          geom_rect(aes(xmin = 1976, xmax=1978, ymin= -0.4, ymax = Inf))+ 
+          geom_rect(aes(xmin= 1991, xmax= 1993, ymin= -0.4, ymax= Inf))+
+          geom_line(aes(y=gap_CO2), colour = "green4")+
+          labs(y="Gap in CO2 emissions (m. t.) Sweden - Synth(CO2)")
+# show gaps plots side by side
+grid.arrange(gap_GDP, gap_CO2, ncol = 2) 
+```
+*The plots are presented in the paper as Figure 12 : "Gap In GDP Per Capita And CO2 Emissions Per Capita From Transport Between Sweden And Synthetic Sweden".*
+
+The gaps plot on the left side shows the gap between Sweden and Synthetic Sweden(CO2). The impacts of the two recessions on GDP can be seen. The first one was from 1976 until 1978, before the carbon tax was introduced. The second recession was from 1991 until 1993, after the intervention. Both hit Sweden but not its synthetic counterpart which leads to a highly negative value. As well we can see that the magnitude of both recessions is quite similar: the GDP per capita decreased with around $2300\$$. We compare this to the second figure (on the right) that shows emission values. During the first recession, per capita CO2 emissions from transport in Sweden increased compared to Synthetic Sweden(CO2) by $0.086\ tons$. During the second recession a drastic emission reduction of $-0.291\ tons$ can be observed. Compared with the GDP gaps plot, one can see, that the catch-up in growth during the years after the recessions is not traced by a growth in CO2 emissions. After 1993 the GDP increases but CO2 emissions decline. Hence, we can assume that the economic slowdown is not causal for emission reductions. Andersson states that if the emission reductions were driven by economic weakness, we would expect to observe a rebound in emissions when the economy recovers (cf. Andersson, 2019, p.19). 
+
+Remember the question at the beginning of this chapter. We wanted to know whether the CO2 emission reduction may have been driven by economic effects (like a weakening Swedish economy) and not by the energy tax reform. From the analyses in this exercise, we can conclude that the correlation between change in GDP and emissions in the Swedish transport sector has weakened. There is no evidence that an overall sickly economy caused emission reductions. Andersson thus concludes that GDP is not a relevant confounder. In his Appendix he also analyses whether unemployment rate was driving emissions reductions. He concludes that neither GDP nor unemployment were main drivers for changes in emission levels in Sweden and thus, that fuel taxes can explain those changes (cf. Andersson, 2019, Appendix).
+
+
+## Exercise 3.2 Effects from carbon tax on GDP
+
+*Some of the chunks in this exercise are optional. They revise  a lot of the things that you have learned so far and you have to type most of the code by yourself. You have the possibility to skip them.*
+
+We have already shown that the carbon tax (respectively energy taxes in general) affected carbon dioxide emissions in Sweden. The effect is negative which means that a higher tax level was leading to lower emissions. As well we have some unobserved factors $\varepsilon$ that can affect emissions. They can be positive or negative:
+
+<img src="images/Model.jpg" style="width: 35%; height: 35%">
+
+*Figure 1: "Relationship between carbon tax and CO2 emissions"; Source: own diagram.*
+
+Since, by using the Synthetic Control Method, we did not control for any other variables (channels), we measure all direct and indirect effects between the carbon tax and the CO2 emissions. If we wanted to measure only the direct effect of carbon tax on emissions, we would control for the indirect effects by adding control variables. Have a look at the image below:
+
+<img src="images/Channel.jpg" style="width: 50%; height: 75%">
+
+*Figure 2: "Relationship between carbon tax, CO2 emissions and GDP"; Source: own diagram.*
+
+The idea is that the carbon tax might have affected GDP in Sweden and that emission values of a country also depend on the economic activity. Romer and Romer show that tax increases of $1\%$ of GDP lower real GDP by up to $3\%$. They also remark that those changes are persistent (cf. Romer and Romer, 2010, p.19 f.). With high taxes, consumers may be likely to consume less e. g. they may reduce their gasoline consumption as it is more expensive. Less consumption ceteris paribus leads to a lower GDP. So GDP might be one channel for the effects of carbon taxes on carbon dioxide emissions.
+
+In this exercise, we want to analyse whether the introduction of the carbon tax was leading to a decreasing GDP and thus reduced CO2 emissions. There are concerns against carbon taxation because of possible negative effects on industrial competitiveness and a reduction of economic growth. In many countries this may be the reason for rather low carbon prices of less than $10\ USD$ (cf. Rydge, 2015, p.3). As well, special treatments and exceptions from carbon prices are common. One example is the free allocation of allowances to manufacturing industries in the EU-ETS. This shall prevent European sectors from economic disadvantages due to the carbon price and avoid carbon leakage (respectively the migration of firms to other areas) (cf. European Commission, 2020). 
+
+To estimate economic effects, and to investigate whether the energy tax reform influenced the Swedish economy, SCM can well be used. Abadie, Diamond, and Hainmueller (2015) use the method to analyse the implications of the German reunification on its GDP. In the exercise before we followed Andersson, who uses GDP values based on the country weights from Synth(CO2). So the GDP values between Sweden and Synthetic Sweden vary in the pre- and post-treatment period. What we want to do now, is to design a new Synthetic Sweden(GDP) (or Synth(GDP)) with GDP as outcome of interest. Hence, pre-intervention GDP values from Synthetic Sweden(GDP) should resemble Sweden as best as possible to evaluate, whether we can observe a post-treatment effect on GDP in Sweden. We follow the considerations of Abadie, Diamond, and Hainmueller, 2015. Remember that we were using predictors to generate a synthetic control unit to estimate CO2 emissions. We made use of the number of vehicles, urbanization levels, and gasoline consumption. To predict economic growth, we need another set of indicators. They should not be affected by the intervention. Make a guess:
+
+#< quiz "Economic growth predictors"
+question: Which predictors were chosen to resemble Western Germany in the mentioned paper?
+sc:
+- Tax level, inflation rate, unemployment rate, trade openness, gender equality
+- CO2 emissions, inflation rate, trade openness, industry share
+- Inflation rate, trade openness, industry share, schooling, investment rate*
+success: Well done. Have a look at the info box below.
+failure: Try again.
+#>
+
+#< info "Economic growth indicators"
+Economic growth is an increase in the production of goods and services over a period. Growth indicators are used to analyse national and global economic activities and the level and size of economies. The Gross Domestic Product (GDP) is the main indicator to measure economic growth. But there are different factors as well as the balance of payments, trade balance, and trade openness that show the dependency on trading in the economy of a country. Consumer opinion surveys, consumer price indices or inflation influence the consumption of goods and services and can indicate consumption trends early. Economic structure data like the industry share of value added and investment rates provide information about economic output, production, and expenditure. There are many more like financial statistics, schooling, and higher education or labour market statistics, etc.
+
+cf. Worldbank.org: Economy and OECD.org: OECD Main Economic Indicators
+#>
+
+For this exercise, we will use a new data frame which is called `GDP_data.Rds`. Note that the analyses in this exercise aren't part of Andersson's paper. Thus, the data is not provided by Andersson. The stored indicators for economic growth are derived from Abadie, Diamond, and Hainmueller, 2015. Press **edit** and **check** to load the data into `dat` and show a sample.
+```{r}
+#< task
+# load data frame
+dat = readRDS("GDP_data.Rds")
+# show sample 
+sample_n(dat, 6)
+#>
+```
+
+The data frame stores information from several countries from 1970 until 2005.
+
+- Gross domestic product per capita (`gdp_cap`) is obtained from **OECD**. It is given in $US\$$, constant prices, constant PPPs with 2015 as reference year ( data can be found <a href="https://stats.oecd.org/index.aspx?queryid=60707#" target="_blank">here</a>). (Note that the values for Sweden differ from the data that is provided by Andersson. He uses data with the reference year 2005 from two different sources for Sweden and the remaining countries. As the data can't be downloaded any more and for comparison reasons, I decided to use just one data source for all countries).
+
+- Inflation rates (`infrate`) are annual consumer price inflation rates in %, taken from **The World Bank** (data can be found <a href="https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG" target="_blank">here</a>).
+
+- Trade openness (`trade`) is the sum of imports and exports of goods and services as % of GDP, obtained from **The World Bank** (data on imports can be found <a href="https://data.worldbank.org/indicator/NE.IMP.GNFS.ZS" target="_blank">here</a> and on exports <a href="https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS" target="_blank">here</a>).
+
+- Investment rates (`investrate`) are obtained from **The World Bank**. They are given as gross capital formation (in % of GDP) which is gross domestic investment including fixed assets and changes in the inventory levels (data can be found <a href="https://data.worldbank.org/indicator/NE.GDI.TOTL.ZS" target="_blank">here</a>).
+
+- Schooling (`schooling`) is the educational attainment for population aged 25 or older for the total population. It is measured in % of the population aged 25 or over that attained a secondary level. The data are reported in five-year increments (data can be found <a href="http://www.barrolee.com/" target="_blank">here</a>).
+
+Due to a lack of data in some countries before 1980, we do not use industry share as an indicator, departing from Abadie, Diamond, and Hainmueller.
+
+Use the `unique()` command to show the countries stored in the data frame `dat`. This exercise is optional.
+```{r optional = TRUE}
+#< task
+#>
+# show countries stored in dat
+unique(dat$country)
+
+```
+
+The donor pool is similar to the one we used to generate a synthetic control for CO2 emissions from transport (Synth(CO2)). But I made some changes. I excluded Spain, Portugal, and Poland due to a lack of data and Iceland because of its small size and economy. As they had no weight in the synthetic control group we generated before, this might not have a big impact. To compensate for those countries, I included Norway and Finland, two Scandinavian countries. It is important to say that Canada, Finland, and Sweden had financial crises at the beginning of the 90s. 
+
+Let's have a look at the development of GDP per capita in the given countries. Use `ggplot` to plot `year` on the x-axis and `gdp_cap` on the y-axis.  Add a `geom_line()` and a `facet_wrap()` command to show the plots of the different countries and add a label `"GDP per capita"` to the y-axis. This exercise is optional.
+
+```{r dev="svg", optional = TRUE}
+#< task
+#>
+#use ggplot with geom_line()
+ggplot(data=dat, aes(x= year, gdp_cap)) +
+  geom_line()+
+#add a facet_wrap
+  facet_wrap(~ country)+
+# add a label  
+  labs(y="GDP per capita")
+```
+
+The figures show that GDP per capita follows an upward trend between 1970 and 2005 in all observed countries. In 1970 per capita GDP in Switzerland is on the highest level at around $41000\ USD$, Greece ($\sim15800\ USD$), Japan ($\sim16100\ USD$), and Finland ($\sim17000\ USD$) are on the lowest levels. At around 1990 there are recessions in Sweden, Finland, and Canada. Between 1970 and 2005 per capita GDP developed most in Norway ($\sim +274\%$) and Finland ($\sim+248\%$) and least in  Switzerland ($\sim+143\%$). In 2005 Norway is at the highest level with ($\sim59000\ USD$), followed by Switzerland with ($\sim58500\ USD$) and the US ($\sim52800\ USD$),   GDP per capita in Sweden in 1970 is $\sim23100\ USD$. Until 2005 it grows up to $\sim43600\ USD$. Afterwards, until 2018 it increases on $\sim50600\ USD$. 
+
+We would like to know whether there is an indication that the energy tax reform of 1990/1991 affected the Swedish GDP in a significant way. So we once more want to generate a Synthetic Sweden but now observe the trend in GDP after 1990. Again, we start with `dataprep()`. We use as predictors investment rate `investrate`, trade openness `trade`, and inflation rate `infrate`. We want to use predictor means for the years 1980-1989. As well we add three lagged years for `gdp_cap`: 1975, 1980, and 1989. As data for `schooling` is given in five year increments, we also add this variable as a special predictor with the mean of the years 1975, 1980, and 1985. Our dependent variable is `gdp_cap` which is defined through the treatment identifier `13` for Sweden. Our pre-treatment period is 1970-1989, the whole observed period is 1970-2005. 
+
+Fill in the right values to the placeholders below. It will take a moment to search for the synthetic control. 
+(Also note that I added an `as.data.frame()` command as `dataprep` can only use numeric variables and for example, some `dplyr`code returns lists that cannot be read in by `dataprep()`.)
+
+```{r}
+#< fill_in
+# dat = as.data.frame(dat)
+# dataprep.out = dataprep(foo = dat,
+#     predictors = c("investrate", ___, ___),
+#     predictors.op ="mean",
+#     time.predictors.prior = ___,
+#     special.predictors = list(
+#     list("gdp_cap",1975,c("mean")),
+#     list("gdp_cap", 1980, c("mean")),
+#     list("gdp_cap", 1989, c("mean")),
+#     list("schooling", c(1975,1980,1985), c("mean"))),
+#     dependent = "gdp_cap",
+#     unit.variable = "countryno",
+#    unit.names.variable = "country",
+#     time.variable = "year",
+#     treatment.identifier = 13,
+#      controls.identifier = c(___),
+#     time.optimize.ssr = 1970:1989,
+#     time.plot = 1970:2005)
+# synth.out = synth(data.prep.obj = dataprep.out, method = "BFGS" )
+#>
+# sample solution
+dat = as.data.frame(dat)
+dataprep.out = dataprep(foo = dat,
+    predictors = c("investrate", "trade", "infrate"),
+    predictors.op ="mean",
+    time.predictors.prior = 1980:1989,
+    special.predictors = list(
+    list("gdp_cap",1975,c("mean")),
+    list("gdp_cap", 1980, c("mean")),
+    list("gdp_cap", 1989, c("mean")),
+    list("schooling", c(1975,1980,1985), c("mean"))),
+    dependent = "gdp_cap",
+    unit.variable = "countryno",
+   unit.names.variable = "country",
+    time.variable = "year",
+    treatment.identifier = 13,
+     controls.identifier = c(1:12),
+    time.optimize.ssr = 1970:1989,
+    time.plot = 1970:2005)
+synth.out = synth(data.prep.obj = dataprep.out, method = "BFGS" )
+```
+
+To obtain the output in a more readable form, use `tab.pred`, `tab.v` and `tab.w` (the syntax is `Table$ tab.x[,]`, we have 7 predictors and 12 control countries). This exercise is optional.
+
+```{r optional = TRUE}
+#< task
+Table = synth.tab(dataprep.res = dataprep.out,
+                          synth.res = synth.out)
+#>
+
+#show table of predictor means before treatment
+Table$tab.pred[1:7, ]
+
+#show table of predictor weights
+Table$tab.v[1:7, ]
+
+#show table of country weights
+Table$tab.w[1:12, ]
+```
+
+`tab.pred` shows that Sweden is better resembled by the synthetic control group than by the sample mean regarding most of the predictors. The values for investment rate, trade openness, inflation rate, schooling and the lagged years of GDP 1980 and 1989 are quite close. But also the sample mean in this example is much closer to the Swedish predictor values compared to the CO2 emission predictors in exercise 2.3.
+
+`tab.v` shows that the highest weight is assigned to the predictor schooling  with $38.5 \%$, followed by the special predictor GDP per capita in 1989 with $20.2 \%$.
+
+`tab.w` shows the weights assigned to the control countries. In this example, Sweden is best resembled by a combination of Finland ($33.5 \%$), New Zealand ($26.6 \%$), Denmark ($19.1 \%$), and Switzerland ($11.2 \%$). The other countries have a weight of around or less than $1 \%$.
+
+Remember that Finland was not part of the data frame we used to generate Synthetic Sweden in exercise 2.3. Since it is a Scandinavian country and as Sweden faced a recession in the early 90s, the high weight seems to be plausible. Also, New Zealand and Denmark made up a huge part of the former Synthetic Sweden (Synth(CO2)).
+
+Let's plot the GDP per capita in Sweden and *Synthetic Sweden*. Press check to run the code. 
+```{r dev = "svg"}
+#< task
+path.plot(synth.res = synth.out, dataprep.res = dataprep.out,
+          Ylab = "GDP per capita in USD", Xlab = "year",
+          Ylim = c(0 , 70000), Legend = c("Sweden", "Synthetic Sweden"), 
+          Legend.position = "bottomleft")
+          abline(v = 1990, lty = 3)
+#>        
+``` 
+
+As we wanted to know how the GDP developed after the Swedish energy tax reform, we again set the intervention to 1990 (marked by a vertical line). We can see that Sweden and Synthetic Sweden fit quite well in the pre-treatment period from 1970-1989. As said before, Sweden had to face a recession in the early 90s which was leading to a lower value of per capita GDP compared to *Synthetic Sweden*. But already around 2000 Sweden recovered and slightly overtook the growth of the synthetic control unit. Until 2018 the gap grows even further. Thus, in our example, we can't observe a negative long-term effect of the energy tax reform on per capita GDP in Sweden. So in this example GDP might not be a relevant channel for the reduction of CO2 emissions from transport. 
+
+However, those results should not be overinterpreted. Our pre-intervention period, through a lack of further data, is just 20 years long. Abadie, Diamond, and Hainmueller remark that optimal country weights can only be found if the pre-intervention period is large, which is not closer defined (cf. Abadie, Diamond, and Hainmueller, 2010, p.495). So, it is not clear, if the combination of weights yields good results. Still, we might assume, that the GDP was not negatively affected by the energy tax reform.
+
+#< info "Further tests"
+Excluding schooling as a predictor leads to higher predictor weights for `investrate`, `trade`, and `special.gdp_cap.1980`. Still the distribution of country weights stays the same. Only the values vary slightly (e. g. 32.7% for Finland, 29.5% for New Zealand).
+
+Excluding Norway and Finland from the donor pool leads to a high v-weight for `special.gdp_cap.1980` (53%), followed by the inflation rate (23.8%) and schooling (23.1%). With this adaption, the highest country weights are assigned to Denmark (31.3%), New Zealand (26.1%), and Japan (11.8%). 
+
+Belgium which made up nearly 20% of Synthetic Sweden(CO2) in exercise 2.3, does not play a major role in any scenario tested.
+
+Also, a placebo in-time-test for 1980 does not show a negative effect on economic growth in Sweden after 1990. Note that the pre-treatment period in this case is just 10 years which might be too short to make a valid statement. Note that placebo test are actually done to compare whether an actual effect is rather large or small. As we cannot find an effect on GDP in our example, the placebo studies may not be telling a lot. Still, there is no evidence, that Sweden had an extraordinary decline in economic growth.
+
+Andersson also compares GDP per capita in Sweden and Synthetic Sweden(CO2), using data with the reference year 2005 from 1960 until 2005. *This plot can be seen in the paper as Figure  11: "GDP Per Capita: Sweden Versus Synthetic Sweden".* It shows that Sweden is hit by a recession from 1991-1993 that is not traced by Synthetic Sweden(CO2). But around 2000 Sweden can catch up and outperforms its synthetic counterpart.
+#>
+
+Criqui, Jaccard and Sterner analysed the effects of carbon taxation on GDP from 1990 until 2017 in Sweden, Canada, and France. They as well conclude that emissions can be reduced without a decline in GDP. Until 2017 they find overall emission reductions of $−26\%$ in Sweden. At the same time GDP grew by $78\%$. For Canada they show that emissions grew much slower ($+36\%$) than GDP ($+86\%$). And in France, despite an energy related emission reduction of $−13\%$, GDP grew by $51\%$. Thus, there has been a decoupling of emissions from growth in all three countries (cf. Criqui, Jaccard, and Sterner, 2019, p.2 f.).
+
+Parry even argues that a tax of $35\ USD$ for countries like India and China and $70\ USD$ for the US and Canada in 2030 would lead to significant revenues which could help to alleviate possible negative effects due to higher energy prices. Households then on average would have to pay 2% more for consumption. Even if those countries decide to help low income households with transfer payments, he sees an overall positive effect of carbon taxation on the economies (cf. Parry, 2019, p. 17 f.). Hence, to answer the second question from the beginning of this exercise: Was the carbon tax leading to a decrease in economic growth in Sweden? We cannot find evidence that the tax reform harmed the development of the GDP in Sweden. Also literature supports this result.
+
+Go on with the next exercise to learn more about how consumers respond to tax changes.
+
+
+## Exercise 4 Tax incidences and elasticities
+
+In this exercise, we want to investigate tax incidence which explains how the burden of a tax is distributed between companies and consumers. Afterwards, we will have a look at how consumers respond to tax changes compared to price changes. Here, you will get to know more about regression theory, adding control variables, and instrumental variable estimation. The analyses finish with the disentangling of carbon tax and VAT.
+
+
+### Tax Incidence
+
+We start by investigating, whether the tax changes were passed on to the consumers. If the firms hand down the fuel taxes to consumers this will lead to higher retail prices. The tax incidence depends upon the relative elasticity of demand and supply which means that with a higher price the demand is expected to decline. If tax changes are passed to consumers, tax and demand elasticities occur.
+
+For the following investigations, we need another data frame `regression_data.Rds`. Press **edit** and **check** to load  the data and select the relevant information.
+```{r}
+#< task
+# read data into reg_dat
+reg_dat=readRDS("regression_data.Rds")
+# select variables
+reg_sub = select(reg_dat,year, p_nom, en_tax, CO2_tax, oil_p, en_CO2_tax)
+#show sample of reg_sub
+sample_n(reg_sub,6)
+#>
+```
+
+Our data set stores data from 1970 until 2015. For this exercise we only need the first five variables:
+
+- `p_nom` is the *nominal* tax-inclusive retail price of gasoline.
+- `en_tax` is the *nominal* energy tax.
+- `CO2_tax` is the *nominal* carbon tax and.
+- `oil_p` is the retail crude oil price in SEK.
+- `en_CO2_tax` is the sum of energy and carbon tax (excluding VAT and producer margin).
+
+We want to use OLS estimation to regress the retail price $p^\ast_t$ (`p_nom`) on the oil price $\varTheta_t$ (`oil_p`) and the sum of the taxes $T_t$ (`en_CO2_tax`), to find out whether the taxes were passed on to consumers. We find the following linear regression model:
+
+$$ \Delta p^\ast_t = \beta_0 + \beta_1 \Delta \varTheta_t + \beta_2 \Delta T_t + \varepsilon_t$$
+As it is a level-level regression, results can be interpreted as follows: if the explanatory variable is one unit higher (lower), the dependent variable on average is $\beta$ units higher (lower). As we use changes of prices and tax rates, represented by $\Delta$, we can say: if the explanatory variable rises (falls) by 1, the dependent variable on average rises (sinks) by $\beta$ (for further information have a look at Wooldrigde, 2013, p.43 f.). Remember that we want to find out whether the tax changes, introduced through the environmental tax reform, were fully passed on to the consumers. 
+
+So here is a quiz:
+
+#< quiz "Consumer tax burden"
+question: What do you the coefficient beta2 to be like in the level-level regression?
+sc:
+- I expect a coefficient around 1*
+- I expect a coefficient around 0
+- I expect a coefficient around -1
+
+success: Well done.
+failure: Try again.
+#>
+
+Remember the interpretation of the level-level regression: if the explanatory variable sum of taxes ($\Delta T_t$) is changed by one, we expect to change the dependent variable ($\Delta p^*_t$) by $\beta_2$. This means that a change in energy and carbon tax by one unit would lead to a change in the retail price by $\beta_2$. So if we want to find, that the tax burden was fully passed on to the consumers, we expect the value of the coefficient to be around $1$. 
+
+Before we can do the regression, we have to adapt our variables since we use the changes of the prices and tax rates (represented by $\Delta$). We use the `mutate()` command for a neat code and `lag()` to compute lagged versions of our time series by shifting the time base back by a year at a time. Fill in the placeholders below.
+```{r}
+#< fill_in
+#dat_delta = reg_sub %>%
+#  ___(
+#   delta_p = p_nom-lag(p_nom),
+#   delta_oil_p = oil_p-___(oil_p),
+#   delta_tax = en_CO2_tax-lag(en_CO2_tax))
+#head(dat_delta)
+#>
+# sample solution
+dat_delta = reg_sub %>%
+#generate new columns  
+  mutate(
+# calculate lags    
+   delta_p = p_nom-lag(p_nom),
+   delta_oil_p = oil_p-lag(oil_p),
+   delta_tax = en_CO2_tax-lag(en_CO2_tax))
+# show head of data
+head(dat_delta)
+```
+
+For each year we computed the $\Delta$ for the observed time period and the time period before.
+
+Use the `lm()` command to estimate the given model and assign to `reg`. Then use `summary() ` to show further information on `reg`. 
+```{r}
+#< task
+#>
+# use lm() to do the regression and store the results in reg
+reg = lm(delta_p ~  delta_oil_p + delta_tax, data = dat_delta)
+# show a summary of reg
+summary(reg)
+#< hint
+cat("Don't forget to assign the data frame dat_delta  with 'data =' to your regression.
+    You have to  combine the independent variables with a '+'.")
+#>
+```
+
+We find an estimate for the coefficient on taxes of  $1.14729$ (~$1.15$). The standard error is $0.23$, so our confidence interval is $([0.90-1.39])$. Hence, we find an estimator for our coefficient $\beta_2$ which is statistically indistinguishable from 1. This indicates that the Swedish tax changes were fully passed through to consumers.
+
+*This exercise corresponds with the analysis on page 7 and 8 of the paper.*
+
+
+## Exercise 4.1 Gasoline consumption regression - OLS
+
+Before we can disentangle carbon tax and VAT, we have to separate price effects on consumer behavior from tax effects. Press **edit** and **check** to load the `regression_data.Rds` file as in the exercise before.
+
+```{r}
+#< task
+reg_dat=readRDS("regression_data.Rds")
+reg_sub = select(reg_dat, -p_nom, -en_tax, -CO2_tax, -oil_p, - en_CO2_tax)
+head(reg_sub)
+#>
+
+```
+
+To analyse the behavioral response from changes to the carbon tax rate and equivalent gasoline price changes, we use a log-level regression model:
+
+$$ ln(y_t) = \beta_0 + \beta_1pv_t + \beta_2ct_t + \beta_3D_t + \beta_4X_t + \varepsilon_t $$
+- $t$ indicates the time (year) .
+- $y_t$ (`log_gas_cons`) is per capita gasoline consumption in time $t$.
+- $pv_t$ (`p_real_vat`) is the carbon tax exclusive retail price component consisting of the real gasoline price, energy tax, and VAT in time $t$.
+- $ct_t$ (`real_CO2_tax_vat`) is the carbon tax including VAT in time $t$.
+- $D_t$ (`d_CO2_tax`) is a dummy for years which takes the value 1 for years from 1991 and the value 0 for all values before 1991.
+- $X_t$ includes other observed variables that affect gasoline consumption in time $t$.
+- $\varepsilon_t$ is an error term.
+
+
+$\beta_0$ is a constant that describes the per capita gasoline consumption without taxes. As we have a log-linear model, the interpretation of the coefficients differs: If the explanatory variable is one unit higher (lower), the dependent variable on average is ($(100 \cdot \beta) \%$ higher (lower). Given that there is no underlying endogeneity problem, this is also called **semi-elasticity** (cf. Wooldridge, 2013, p. 44). Answer the following quiz:
+
+#< quiz "price and tax semi-elasticity"
+question: Which of the following statements is true ?
+sc:
+- beta1 describes the tax semi-elasticity.
+- beta2 describes the tax semi-elasticity.*
+- beta1 + beta2 describe the tax semi-elasticity.
+
+failure: Try again.
+success: Great. Thats right!
+#>
+
+$\beta_1$ describes the relation between the carbon tax exclusive retail price $pv_t$ and gasoline consumption $y_t$. In the log-linear model the coefficient can be interpreted as price semi-elasticity. $\beta_2$ describes the relation between carbon tax $ct_t$ and gasoline consumption $y_t$. In the given model it can be interpreted as tax semi-elasticity.  In the following analysis, we want to investigate how the gasoline consumption is affected by changes in the carbon tax exclusive gasoline price $pv_t$, compared to changes in the carbon tax $ct_t$. Hence, we want to find consistent estimators $\hat\beta_1$ and $\hat{\beta}_2$. If we find consistent estimators, $100 \cdot \beta \%$ can can be seen as semi-elasticity of $y_t$ with respect to the explanatory variables. Again we use the Ordinary Least Squares (OLS) method which searches for estimators that minimize the sum of the squared residuals.
+
+Again let us first think about, what we expect or coefficients $\beta_1$ and $\beta_2$ to be.
+Do you expect a positive or negative relationship between carbon tax $ct_t$ / gasoline price $pv_t$ and per capita gasoline consumption $y_t$?
+
+#< quiz "Effects on gasoline consumption"
+question: What do you expect to find for the coefficients beta1 and beta2?
+sc:
+- I expect both coefficients to be positive
+- I expect both coefficients to be negative*
+- I expect it to be negative for the carbon tax and to be positive for the retail price.
+
+success: Right, we expect that a higher carbon tax leads to a reduction of gasoline consumption. We expect the same for higher retail prices
+failure: Try again.
+#>
+
+#< quiz "Magnitude of effects"
+question: Now make a guess. Which effect on gasoline consumption do you expect to be higher?
+sc:
+- The effect of price changes on gasoline consumption is higher
+- The effect of the tax changes is higher*
+- The effects are quite similar
+
+success: Well done.
+failure: Try again.
+#> 
+
+We will again work with `felm()` from the `lfe` package for our estimations. The author uses Stata to calculate Newey-West standard errors which are heteroscedasticity and auto-correlation robust. He calculates standard errors with 16 lags.  To achieve similar results, we have to make use of the `coeftest()` function from the `lmtest` package in combination with the `NeweyWest()` function from the `sandwich` package. Find more information in the info box.
+
+#< info "coeftest and NeweyWest"
+`coeftest` is a generic function for performing Wald tests with the syntax 
+`coeftest(model, vcov= )`.
+With `model` you can specify your regression model, `vcov` specifies the co-variance matrix of the estimated coefficients.
+
+The `NeweyWest` function estimates heteroskedasticity and autocorrelation consistent standard errors with the following syntax
+`NeweyWest(model, lag = , prewhite = )`.
+Again with `model` the regression model has to be assigned, `lag` specifies the maximum lag for the estimator. `prewhite` defines whether the estimating function should be pre-whitened or not.
+#>
+
+We use `felm()` to regress the logarithmic gasoline consumption ($ln(y_t)$) `log_gas_cons` on $pv_t$ `p_real_vat`, $ct_t$ `real_CO2_tax_vat`, $D_t$ `d_CO2_tax` and time `t` like given in our model above. (In our first regression we don't control for other variables, so we don't use $X_t$). We store the results in `OLS1`. Then we use `coeftest` to calculate robust standard errors with 16 lags and store the results in `OLS1_robust`. Finally we use `stargazer` to compare the results. Fill in the right values to the place holders. 
+```{r results='asis'}
+#< fill_in
+# OLS1 = felm(log_gas_cons~ ___ + real_CO2_tax_vat + d_CO2_tax + t, data = reg_sub)
+# library(lmtest)
+# library(sandwich)
+# OLS1_robust= coeftest(OLS1, vcov = NeweyWest(OLS1, lag = __, prewhite = FALSE))
+# stargazer(OLS1, OLS1_robust, type = "html", digis =4, column.labels=c("OLS1", "Robust"))
+#>
+# sample_solution
+#use felm to perform the regression and store the results in OLS1
+OLS1 = felm(log_gas_cons~ p_real_vat + real_CO2_tax_vat + d_CO2_tax + t, data = reg_sub)
+#load lmtest and sandwich packages
+library(lmtest)
+library(sandwich)
+# calculate robust standard errors and store results in OLS1_robust
+ OLS1_robust= coeftest(OLS1, vcov = NeweyWest(OLS1, lag = 16, prewhite = FALSE))
+# compare OLS1 and OLS1_robust
+ stargazer(OLS1, OLS1_robust, type = "html",digits=4, column.labels=c("OLS1", "Robust SE"))
+```
+
+*Note that the standard errors found by `OLS1_robust` are nearly similar to the values, the author finds in his paper, shown in Table 3 on page 22.*
+
+The results of the regression are estimators for $\beta_0$, $\beta_1$, $\beta_2$ and $\beta_3$ for `OLS1` on the left side and `OLS1_robust` on the right side. As you can see, the values for the coefficients stay the same, but the standard errors vary. $\beta_1$ describes the relationship between the carbon tax exclusive price $pv_t$ `p_real_vat` and the gasoline consumption $y_t$. We find a negative estimator of $-0.0575$. Hence, if the gasoline price $pv_t$ is one unit higher, this can on average be associated with a $-5.75\%$ lower gasoline consumption. $\beta_2$ characterizes the relationship between carbon tax and VAT $ct_t$ (`real_CO2_tax_vat`) and the gasoline consumption. As we expected, the value for its estimator is negative as well ($-0.260$). Thus, if the tax is one unit higher, it can on average be associated with a $-26\%$ lower gasoline consumption. If we assume consistent estimators of the causal effects, we can interpret the coefficients as estimators of the price elasticity (for $pv_t$) and the tax elasticity (for $ct_t$). Elasticity implicitly assumes a consistent estimator. The estimators behave as we were expecting. They are both negative. Still, there may be variables which are correlated with both our dependent variable and our explanatory variables. $pv_t$ and / or $ct_t$ may be endogenous and thus, our OLS estimators may not be consistent.
+
+We can remove factors from the error term by adding control variables. The author iteratively adds three control variables to $X_t$ that may affect gasoline consumption: GDP per capita (`gdp_cap`), urban population (`urban_pop`), and unemployment rate (`unempl`). Let us briefly think about them:
+
+- GDP per capita: The GDP per capita is probably relevant for the demand for gasoline. We can assume that if GDP per capita rises, more people can afford cars which would lead to more gasoline consumption. On the other hand, we can believe that a higher GDP per capita leads to more environmental consciousness, hence people may drive more electric cars or bikes. In both cases, the variable should be included in our regression model.
+
+- Urban population: It may have an influence on per capita gasoline consumption, whether people live in urban or rural areas. Maybe persons living far away from cities drive more and longer distances to get to work which leads to higher gasoline consumption. We can also believe that people in rural areas are more likely to buy diesel cars and thus consume less gasoline. Hence, if the urban population is more likely to drive gasoline cars, a higher urban population would lead to higher gasoline consumption. In both cases, controlling for `urban_pop` seems to be a good idea.
+
+- Unemployment rate: Here it might be more clear. We can assume that a high unemployment rate leads to less disposable income. As using cars is quite expensive, people are more likely to reduce driving their cars and to use buses or trains instead. So it might be a good idea to capture employment effects.
+
+There may be more factors that influence the gasoline consumption. But now, we want to add those three variables to our regression model. We again calculate the corresponding robust standard errors. Press *check* to run the code and show the output of the regressions with the `stargazer` function.
+```{r results = 'asis'}
+#< task
+# control for GDP per capita
+OLS2 = felm(log_gas_cons~ p_real_vat + real_CO2_tax_vat + d_CO2_tax + t + gdp_cap, data = reg_sub)
+# calculate robust standard errors
+OLS2_robust = coeftest(OLS2, vcov = NeweyWest(OLS2, lag = 16, prewhite = FALSE))
+
+# control for GDP per capita and urban population
+OLS3 = felm(log_gas_cons~ p_real_vat + real_CO2_tax_vat+
+              d_CO2_tax + t + gdp_cap+ urban_pop, data = reg_sub)
+# calculate robust standard errors
+OLS3_robust = coeftest(OLS3, vcov = NeweyWest(OLS3, lag = 16, prewhite = FALSE))
+
+# control GDP per capita, urban population and unemployment rate
+OLS4 = felm(log_gas_cons~ p_real_vat + real_CO2_tax_vat+
+            d_CO2_tax + t + gdp_cap + urban_pop + unempl, data=reg_sub)
+# calculate robust standard errors
+OLS4_robust = coeftest(OLS4, vcov = NeweyWest(OLS4, lag = 16, prewhite = FALSE))
+
+# show regression results
+stargazer(OLS1_robust, OLS2_robust, OLS3_robust, OLS4_robust, type = "html", digits =4)
+#>
+```
+Let's compare the results for the estimators $\hat\beta_1$ and $\hat\beta_2$: For the first regression `OLS1` we found an estimator $\hat\beta_1$ of $-5.75\%$. Adding control variables we find slightly larger values. The result of the fourth regression `OLS4` that controls for GDP per capita, urban population and unemployment, is $-6.03\%$. So not including other control variables in the first regression probably leads to an underestimation of the impact of the gasoline prices on gasoline consumption. For $\hat\beta_2$ the results vary more. Without any control variables, a one unit higher tax rate corresponded with an average change in gasoline consumption of $-26\%$. Controlling for several variables the estimated value gets smaller as `OLS4_robust` finds a value of $-18.6\%$. Thus,  if the tax rat is one unit higher, it can on average be associated with a $-18.6 \%$ lower gasoline consumption. Again, if we assume the estimators to be consistent, in our log-level regression model we find semi-elasticities. Hence, $\beta_1$ would be a price elasticity. The earlier analysis of tax incidence indicated that changes in taxes were fully passed through to consumers. Thus, $\beta_2$ would be the tax elasticity. In the first regression it is $4.5$ times larger than the corresponding price elasticity. In the fourth regression, the factor is $3$. Still, the estimators behave as we expected. Nevertheless, it is not sure, whether they are consistent. There can still exist a correlation between the demand shock and the gasoline price which would lead to an endogeneity problem. Go on with the next exercise to learn about instrumental variable estimation and how it can help to overcome endogeneity problems.
+
+*Andersson shows the regression results in Table 3 on page 22 of his paper. Note that the obtained standard errors from R differ slightly from the found standard errors of the author.*
+
+
+## Exercise 4.2 Gasoline consumption regression - IV
+
+If we assume the found estimators to be consistent, we can say that tax semi-elasticity on gasoline consumption in Sweden is higher than price semi-elasticity. The estimators reacted as we expected: higher gasoline prices as well as higher carbon taxes were associated with less gasoline consumption. Nevertheless, there is a risk of factors in the error term, that are related to higher gasoline consumption and correlated with the gasoline price that are not included in our regression model. Then our estimators would be biased and inconsistent. Andersson thus compares his OLS estimators with estimators from **instrumental variable** estimation. In this exercise we learn get to know the Two-Stage Least Squares (2SLS) estimation which is the most frequently used form of instrumental variable estimation (cf. Murray, 2006, p.3). Let's have a look at a simple model:
+
+$$y = \beta_0 + \beta_1 x + \varepsilon $$
+In our example the dependent variable $y$ is the gasoline consumption. Our explanatory variable $x$ is the gasoline price which might be endogenous. $\varepsilon$ is an error term that includes unobserved factors. If the error term includes a relevant variable that is correlated with the gasoline price, we call this an **endogeneity problem**. We then think that the correlation between the gasoline price $x$ and the error term $\varepsilon$ might differ from $0$:
+
+$$ cor(x,\varepsilon) \neq 0 $$
+If we have an endogeneity problem, our OLS estimators are biased and inconsistent which means that the causal effect from gasoline price on gasoline consumption can't be mapped. So we want to make sure that the gasoline price affects the gasoline consumption and not the other way around.
+
+One possibility to overcome endogeneity problems is the usage of **instrumental variables**. An instrumental variable or instrument $z$ for an endogeneous variable $x$ is a variable that fulfills the two following conditions:
+
+$$(1)\ Relevance: cor(x,z) \neq 0$$
+The instrument $z$ and the explanatory variable $x$ have to be correlated.
+
+$$(2)\ Exogeneity: cor(\varepsilon,z) = 0$$
+The instrument $z$ and the error term $\varepsilon$ aren't correlated.
+
+For each endogenous variable in the regression model you need at least one instrumental variable that is not an explanatory variable in the original regression model. This is sometimes referred to as exclusion restriction (cf. Murray, 2006, p.3).
+
+Have a look at the info box for further information on the stages of instrumental variable estimation.
+
+#< info "Two Stage Least Squares"
+Remember that our regression model we used for OLS estimation was:
+
+$$ ln(y_t) = \beta_0 + \beta_1 \ pv_t + \beta_2 \ ct_t + \beta_3 \ D_t + \beta_4 \ X_t + \varepsilon_t $$
+In the first step of the Two-Stage Least Square regression we want to find an estimated value $\hat{pv_t}$ for the carbon tax exclusive retail price. In this stage the endogenous variable (price) is regressed on **all** exogenous and instrumental variables via OLS estimation.
+We estimate:
+
+$$\hat{pv_t}= \hat{\gamma_1}+\hat{\gamma_2}c_t+ \hat{\gamma_3}D_t+ \hat{\gamma_4}X_t+\hat{\gamma_5}z_t $$
+The idea is to construct fictional prices that we would receive if there wasn't an error term. Thus, $\hat{pv_t}$ contains the variation in prices that can be explained by the other explanatory variables and instruments.  Those fictional prices $\hat{pv_t}$ can than be used to estimate the original regression as $\hat{pv_t}$ is not correlated with $\varepsilon_t$ and we can find consistent estimators with the original regression model and the predicted values:
+
+$$ ln(y_t) = \beta_0 + \beta_1 \ \hat{pv_t} + \beta_2 \ ct_t + \beta_3 \ D_t + \beta_4 \ X_t + u_t $$
+
+Read more about Two-Stage Least Square estimation at Wooldridge, 2012, p. 513 ff.
+#>
+
+We want to instrument the carbon tax-exclusive gasoline price. Andersson offers the energy tax and the crude oil price as instruments. Let us think about them:
+
+**Relevance**
+
+The relevance condition says that the instrument and the explanatory variable have to be correlated. So we have to check whether the energy tax rate or the crude oil price are correlated with the gasoline price. As we have seen in chapter 2, the energy tax rate is part of the carbon tax-exclusive gasoline price. If the energy tax rate increases ,we would expect the gasoline price to increase as well. Actually, it is not that clear. Remember the plots of tax elements in Exercise 1.1. After 1990 the energy tax decreased. But real wholesale prices and retail prices were increasing. For the crude oil price, the relationship seems to be more clear. A rise in raw material costs will probably lead to an increase in the gasoline price in Sweden. So, we would expect the crude oil price and the gasoline price to be positively correlated. Hill, Griffith, and Lim remark that the relevance condition in a simple regression model can be checked by calculating the correlation between the instrument and the endogenous variable, given by the data. In a multiple regression model with more than one explanatory variable this is not enough. The correlation between the instrument $z$ and the endogenous variable $x$ can be assesed after controlling for the effects of the other explanatory variables (cf. Hill, Griffith, and Lim, 2011, p.410 and 414). A possibility to check the relevance condition is the weak instrument test. Have a look at the info box below for further information.
+
+#< info "The weak instrument test"
+
+The weak instrument test tests if the excluded instrument $z_t$  is strongly correlated with the endogenous variable ($pv_t$). The null hypothesis $H_0$ is that in the first stage of the regression, the coefficients $\gamma_1$ and $\gamma_2$ are zero wich means that the instrument and the endogenous variable are uncorrelated ($cor(pv_t,z_t)= 0$). The instrument thus is weak, if even a small correlation is found (cf. Verbeek, 2012, Chapter 5.5.4). We would like the result of the test to be very low and to be significant with *** to reject $H_0$. If $z_t$ is only weekly correlated with $pv_t$, the IV-estimator can be biased. Stock and Yogo (2005) motivate critical values for the test statistics (F-statistic for the first stage). They say that the rule of thumb, that the value should be larger than 10 is a good suggestion for a small number of instrumental variables. Then it approximates a 5% significance level for the relative bias weak instrument test, that the relative bias is 10% or less in the worst case. The authors remark that the value of 10 under certain circumstances is too conservative. They explain that this rule of thumb is based on a case with one endogenous variable and a relative bias of the 2SLS estimator. An instrument in this definition is weak if the bias of the 2SLS estimator exceeds a defined threshold (e. g. 10%) relative to the bias of OLS. The authors suggest an additional definition of weak instruments: it is weak if the size of an $\alpha$-level Wald test exceeds a defined threshold (e.g. 10%) (cf. Stock and Yogo, 2005, p.3, 28 f.). Given one endogenous variable, one instrumental variable, a significance level of $\alpha = 5\%$ for the Wald test and a threshold of $10\%$, Stock and Yogo suppose a critical F-Statistic of 16.38. For two instrumental variables the value would be 19.93 (cf. ibid., p.40).
+#>
+
+**Exogeneity**
+
+This condition is even more critical to access, as the error term $\varepsilon$ can't be measured. We have to theoretically think of what might be part of the error term. Andersson  defines the error term as idiosyncratic shocks, which means that they affect individuals or households. As we estimate the gasoline consumption, $\varepsilon$ are demand shocks that lead to higher or lower demand. Let us think of some examples. Imagine the Swedish government subsidises electric cars, bikes, and public transport, and many Swedes would stop using gasoline cars. This would be a demand shock on gasoline consumption. But would it affect the crude oil price? For the crude oil price, we can assume that it is not influenced by Swedish demand shocks as the prices are world prices and Sweden is a rather small consumer. Another example we can think of is a Europe-wide sharp increase in more efficient cars caused by European regulation. This could actually cause a change in crude oil prices as those prices depend on demand. A Europe- wide demand shock might influence the crude oil price which would mean a positive correlation with reduced demand in Sweden. So this instrument might not be exogenous. For the energy tax, exogeneity is not obvious, since tax level changes are often driven by political decisions. It is not clear whether they are exogenous or not. Often they react on current events. Still, if the government would like to promote alternative fuels and adjusts the energy tax level for fossil fuels, there might be some correlation. As well, Andersson argues that the implementation of tax changes needs some time which is why he sees it as exogenous. Still, Li, Linn, and Muehlegger argue, that tax changes that are once decided, mostly are fully passed on to consumers in the same month (cf. Li, Linn, and Muehlegger, 2014, p.306). 
+
+Exclusion restriction: The crude oil price obviously is not part of the original regression. As the energy tax is part of the carbon tax exclusive gasoline price, the exclusion restriction is not fulfilled. Andersson describes that $pv_t$ includes the real gasoline price, the energy tax, and the VAT.
+
+Finding valid instruments is not trivial, especially when coping with a multiple regression where more than one variable might be correlated with $\varepsilon$ (cf. Auer and Rottmann, 2010, p.560). Have a look at Murray, 2006 to learn more about how to avoid pitfalls of instrumental variable estimation.
+
+Before we use an R-package that fits regression model based on 2SLS estimation for us, we want to do the steps manually. We again load `regression_data.Rds` and store it into `reg_dat`. As the relevant variables for this exercise are only given until 2011, we omit the years afterwards. Also, we remove variables that are not important for our analysis. We assign the adapted data frame to `reg_sub`. Just press **edit** and **check**.
+```{r}
+#< task
+# Load data frame
+reg_dat=readRDS("regression_data.Rds")
+# filter for years and select relevant columns
+reg_sub  = reg_dat %>%
+  filter(year >= 1970, year <=2011)%>%
+  select( -p_nom, -en_tax, -CO2_tax, -oil_p, - en_CO2_tax)
+#>
+```
+
+Now we can perform the first stage of the Two-Stage Least Squares procedure: Regress `p_real_vat` on all instruments and exogenous variables with `lm`. Store the results in `reg1`. Assign to the variable `p.hat` the predicted values of the dependent variable of `reg1` by using the function `fitted`. Show the head of `p.hat`.
+```{r}
+#< task
+#>
+# regress p_real_vat on real_CO2_tax_vat, d_CO2_tax, t, gdp_cap, urban_pop, unempl, real_en_tax_vat and oil_p_real
+reg1 = lm(p_real_vat~ real_CO2_tax_vat+ d_CO2_tax+ t+ gdp_cap+ urban_pop+ unempl+ real_en_tax_vat+ oil_p_real,
+           data = reg_sub)
+# use fitted() to assign the predicted values from reg1 to p.hat
+p.hat = fitted(reg1)
+head(p.hat)
+```
+
+The variable `p.hat` stores fictional prices that are not disturbed by an error term. It contains the price variation that can only be explained by the other explanatory variables and the instruments.
+
+Let's have a look at the results of the second stage of the 2SLS procedure. We use `lm()` to regress `log_gas_cons` on `p.hat` and the other explanatory variables. We store the results in `reg2` and show a summary of `reg2`. 
+
+```{r}
+#< task
+reg2 = lm(log_gas_cons ~ p.hat + real_CO2_tax_vat + d_CO2_tax + t + gdp_cap + urban_pop + unempl, data = reg_sub)
+summary(reg2)
+#>
+```
+
+We can see the regression results for `reg2`. We find a value of $−0.064$ for $\hat{\beta}_1$, so we can say a one unit higher gasoline price on average corresponds with a $−6.4 \%$ lower gasoline consumption. For `OLS4` it was $−0.0603$, so the IV-estimator would indicate an underestimation of the effect found by the OLS-estimation. In `OLS4` we found that a one unit higher tax rate was corresponding with an on average $−18.6 \%$ lower gasoline consumption. We find the same value in `reg2`.
+
+**Instrumental variable estimation with ivreg**
+
+R offers a possibility to simplify the instrumental variable estimation with the `ivreg()` command from the `AER` package. Have a look at the info box for further information.
+
+#< info "ivreg and diagnostic tests"
+
+`ivreg` fits regression models by two-stage least square estimation. The syntax is `ivreg(formula| instruments, data)`. Exogenous regressors have to be included as instruments for themselves. For a neat code, `|.` can be used to include all control variables of the formula. If you do so, you have to subtract the explanatory variable and add the instruments afterwards. In combination with `summary(ivreg, diagnostics = TRUE)` several diagnostic tests on the instruments can be shown:
+
+
+**The Wu-Hausman test**
+
+The Wu-Hausman test can test whether an endogenous variable is indeed endogenous or not. The null hypothesis $H_0$ is that all explanatory variables are exogenous. A small p-value leads us to rejecting $H_0$ which means that we might have an endogeneity problem. We should keep in mind that even if the variable is exogenous, the test can reject $H_0$ because the instrument is endogenous. So you should be sure that your instrument is exogenous. For a low p-value for the Wu-Hausman test we reject the null hypothesis that our explanatory variable is exogenous which would strongly suggest an endogeneity problem.
+
+**The Sargan test**
+
+The Sargan test sometimes can detect endogeneity problems of the instruments. Its null hypothesis $H_0$ is that all instruments are exogenous. The test only works if one more excluded instrument than explanatory variable is given. With a low p-value the null hypothesis can be rejected which means that there might be an endogeneity problem
+
+Read more about instrument testing at Hill, Griffiths, and Lim, 2011, p. 420 ff.
+#>
+
+Let's see if we find the same results with `ivreg` as with the two steps procedure above. Use `ivreg` with `oil_p_real` and `real_en_tax_vat` as instruments and store the results in `iv`. Use stargazer to compare the results of `iv` and  `reg2`. We load the `AER` package to use `ivreg()`. Press *check* to run the code.
+```{r results='asis'}
+#< task
+#load AER package
+library(AER)
+# perform a regression with ivreg() and oil_p_real and real_en_tax_vat as instruments. Assign it to iv
+iv = ivreg(log_gas_cons ~ p_real_vat + real_CO2_tax_vat + d_CO2_tax + t + gdp_cap + urban_pop + unempl |.-p_real_vat + oil_p_real + real_en_tax_vat , data = reg_sub)
+
+# use stargazer on iv and reg2
+stargazer(iv, reg2, type = "html", digits = 4,
+          column.labels = c("iv", "reg2"))
+#>
+
+```
+
+#< award "instrumental variable estimation"
+Congratulations. You just figured out how to find good instrumental variables and how to yield results from Two Stage Least Squares estimation manually and with ivreg(). That  is a huge benefit for your empirical analyses.
+#>
+
+As you can see, we yield the same results, but it is more comfortable to use `ivreg` than to compute the steps manually. Another advantage is that `ivreg` allows us to easily have a look at diagnostic tests like described in the info box above. Show the diagnostics of `iv`. 
+```{r}
+#< task
+#>
+summary(iv, diagnostics = TRUE)
+
+```
+
+We want to focus on the diagnostic tests: The first statistic we see is the weak instrument test. Its null hypothesis is significantly rejected at a 0.1% level. This means that at least one of our instruments seems to have a significant influence on the gasoline price. The F-statistic with 130 also lies well above the critical value of 10. The null hypothesis of the Wu-Hausman test that all explanatory variables are exogenous can't be rejected as the p-value is 0.568. This test indicates that the explanatory variables are exogenous to gasoline consumption. The p-value for the Sargan test is large with 0.965. This means that the null hypothesis that all instruments are exogenous cannot be rejected. This result indicates that there is rather no endogeneity problem with the instruments. Andersson estimates the model with the two instruments separately. Thus, use `real_en_tax_vat` as an instrument and store the results in `iv1`. Show the result with `summary()` and set `diagnostics = TRUE`. Press *check* to run the code.
+```{r}
+#< task
+#>
+# perform regression with ivreg and real_en_tax_vat as instrument and assign it to iv1
+iv1 = ivreg(log_gas_cons ~ p_real_vat + real_CO2_tax_vat + d_CO2_tax + t + gdp_cap + urban_pop + unempl | .-p_real_vat + real_en_tax_vat, data = reg_sub)
+# show summary of iv1
+summary(iv1, diagnostics = TRUE)
+```
+
+We can see the regression results for `iv1`. We find a value of $-0.062$ for  $\hat\beta_1$, so we can say a one-unit higher gasoline price on average corresponds with a $-6.2 \%$ lower gasoline consumption. For `OLS4` $\hat\beta_1$ was $-0.0603$, so the IV-estimator would indicate a underestimation of the effect by OLS-estimation. In `OLS4` we found that a one unit higher tax rate was corresponding with an on average $-18.6\%$ lower gasoline consumption. We can observe the same value for `iv1`. Have a look at the test diagnostics. The weak instrument p-value is $0.0361$, which is a rather large p-value at a 5%-significance level, shown by $*$. Hence,  the result is not highly significant. Also the F-statistic indicates that the instrument may be biased as it is below 10. So we can assume that the relevance condition is not fulfilled and the instrument is a weak one. Thus, we should not rely on this result, as it may be considerably biased. Murray states that TSLS-estimation is not effective and should not be used if the instruments may be weak (cf. Murray, 2006, p.30). The p-value for the Wu-Hausman test is large (0.9703), so we cannot reject the null hypothesis, that our explanatory variables are exogenous. The test indicates that the carbon tax-exclusive gasoline price is exogenous to gasoline consumption. Now we want to use the real oil price `oil_p_real` as an instrument and assign the results to `iv2`. Again we want to have a look at the diagnostic tests. Just press *check* to run the code.
+```{r}
+#< task
+# perform a regression with ivreg() and oil_p_real as an instrument. Assign it to iv2
+iv2 = ivreg(log_gas_cons ~ p_real_vat + real_CO2_tax_vat + d_CO2_tax + t + gdp_cap + urban_pop + unempl |.-p_real_vat + oil_p_real , data = reg_sub)
+# show the summary of iv2 including test diagnostics
+summary(iv2, diagnostics = TRUE)
+#>
+```
+
+Again, we can see that the main estimator of interest $\hat\beta_2$ stays the same with a value of $-18.6%$. $\hat\beta_1$ even gets a bit larger with $-6.41\%$ instead of $-6.20\%$ in `iv1`. As well we can see, that the weak instrument test`s p-value is very small and it is strongly significant ($***$) at a 0.1% level. So we can strongly reject $H_0$ and assume that the instrument crude oil price has a relevant influence on the price which is good for our analysis. As well the test statistic is well above 10 which indicates that we don't have a weak instrument here. The p-value for the Wu-Hausman test is rather large ($0.705$), so we cannot reject the null hypothesis and we do not find evidence for endogeneity. As we want to obtain robust standard errors as Andersson, we use `coeftest()` in combination with `NeweyWest()`. We also add `OLS4` once more to compare the results with `stargazer(). Press *check* to run the code.
+```{r results='asis'}
+#< task
+# robust standard errors with energy tax as instrument
+iv1_robust=coeftest(iv1, vcov = NeweyWest(iv1, lag = 16, prewhite = FALSE))
+
+#robust standard errors with crude oil price as instrument
+iv2_robust=coeftest(iv2, vcov = NeweyWest(iv2, lag = 16, prewhite = FALSE))
+
+# Ordinary least square estimation with control variables
+OLS4 = felm(log_gas_cons~ p_real_vat + real_CO2_tax_vat+
+ d_CO2_tax + t + gdp_cap + urban_pop + unempl, data=reg_sub)
+OLS4_robust = coeftest(OLS4, vcov = NeweyWest(OLS4, lag = 16, prewhite=FALSE))
+
+# show results with stargazer
+stargazer(iv1_robust, iv2_robust, OLS4_robust, type = "html", digits = 4,
+          column.labels = c("iv1", "iv2", "OLS4"))
+#>
+```
+
+*The found results correspond with Andersson's results in Table 3 on page 22 in his paper*
+
+Remember that in `OLS4` we controlled for GDP per capita, urban population and unemployment rate. We can see that the obtained estimators are quite similar to the IV-estimators.  Auer and Rottmann remark that in case that the explanatory variables are exogenous, the OLS-estimator is preferable, as it is more efficient than the IV-estimator (cf. Auer and Rottmann, 2010, p.564). For the further analysis, Andersson uses the results obtained by `OLS4`. As we assume consistent estimators, we can interpret the coefficients as estimators for the price semi-elasticity ($-0.0604$) and tax semi-elasticity ($-0.186$).
+
+With this results, the effects of the carbon tax and VAT can be disentangled.
+
+## Exercise 4.3 Disentangling carbon tax and VAT
+
+We already assumed, that consumer behavior regarding gasoline consumption is affected more by tax increases than by 'simple' price changes. Let's have a closer look at this assumption:
+
+Demand elasticity in our log linear model is given by multiplying the the real gasoline price with  $\hat{\beta}_1$. Andersson uses the `p_real_vat` value for the year 1990 $8.48 SEK$ to calculate elasticities. Hence, the price **elasticity of demand** is given by $-0.0603 \cdot 8.48 = -0.51$ for the results of `OLS4_robust` and $-0.0641 \cdot 8.48 = -0.54$ for `iv2_robust`. The **carbon tax elasticity** is $-0.186 \cdot 8.48 = -1.57$ for both cases. Hence, one main result of the paper is that it finds, that the tax elasticity is about 3 times larger than demand elasticity.
+
+
+#< info "Tax elasticity: further empirical findings"
+Antweiler and Gulati found that tax changes on fuels in British Columbia lead to about three times higher elasticities than fuel price changes. They argue, that the rise of tax levels is a permanent effect on which consumers respond e. g. by investing in more efficient cars. If prices fluctuate in the short term, motorists make choices under uncertainty, as it is difficult to estimate future price levels. It is unlikely that they change their behaviour as they may expect prices to fall again after an increase (cf. Antweiler and Gulati, 2016, p. 16 and 31 f.).
+
+Li, Linn, and Muehlegger found a similar factor for US gasoline taxes. They as well discuss transaction costs to burden behavioral changes due to temporary price increases. Decisions, like the place of work or living, to participate in carpooling or to change one's travel modes often include high investments or effort. Another reason they found for a higher tax elasticity, is that tax changes in general receive more attention from the media than short term price changes. Constant taxes may not be deliberate to all consumers, thus, media attention increases the saliency of tax levels and changes. This as well can lead to a larger behavioral response (cf. Li, Linn, and Muehlegger, 2014, p.316 and 323 f.).
+#>
+
+We now want to disentangle the effects of carbon tax and VAT on the emissions reduction. Therefore, we need scenarios where no carbon tax and not VAT, no carbon tax but VAT and carbon tax and VAT are simulated, adding to the gasoline price.
+
+Andersson provides another data frame `disentangling_data.dta`. Press edit and check to read the data frame into `dat` and have a look at the values from 2000 to 2005. We use `tail()` to show the last 6 years of the data frame.
+```{r}
+#< task
+dat= read.dta("disentangling_data.dta")
+tail(dat)
+#>
+```
+The data frame `disentangling_data.dta` contains data for the years 1960-2005. To predict the CO2 emission values, Andersson used data on gasoline and diesel consumption which he combined with a (weighted) emission factor. The data frame stores data for three scenarios:
+
+- `CarbonTaxandVAT` stores predicted emissions using the full regression model. 
+
+- For `NoCarbonTaxWithVAT` the carbon tax elasticity is set to zero. 
+
+-  `NoCarbonTaxNoVAT`emissions are predicted, setting carbon tax elasticity to zero and VAT is removed from the gasoline price.
+
+The energy tax is kept constant, as it is included in all scenarios. So we can calculate emission reductions as if there was no change in energy tax rates.In 2000 $0.365$ metric tons of the emission reduction can be attributed to the carbon tax ($2.764-2.3986$). This gives an absolute reduction of $0.3653 \cdot 0.3101  = 0.12$ metric tons. In 2005 the emission reduction due to the carbon tax accounts for $75\%$ ($3.049- 2.292$) which leads to an emission reduction compared with *Synthetic Sweden* of $0.7571 \cdot 0.3546 = 0.27$ metric tons.
+
+We now want to plot the predicted values for the years 1970 - 2005 (as price data is missing for values from 1960-1970). We first filter the data for the years 1970-2005 and then plot the simulation results. Press *check* to run the code
+```{r dev="svg"}
+#< task
+disentangle = dat %>%
+  filter(year > 1969, year <=2005)
+
+Plot= ggplot(data=disentangle, aes(x=year))
+Plot + geom_line(aes(y= CarbonTaxandVAT, col = "Carbon tax with VAT")) +
+  geom_line(aes(y=NoCarbonTaxWithVAT, col="No carbon tax with VAT"), linetype = "twodash",)+
+  geom_line(aes(y=NoCarbonTaxNoVAT, col = "No carbon tax no VAT"), linetype = "dotted") + 
+  geom_vline(xintercept=1990, linetype = "dotted")+
+  labs(y="Metric tons per capita (CO2 from transport)")
+#>
+```
+
+The green line describes CO2 emissions without a tax reform. We can see that emissions are higher, compared to the other scenarios. The distance between the green line and the blue line shows the emission reductions that can be attributed to the VAT. It simulates CO2 emissions for a scenario without the introduction of a carbon tax, but with the coverage of the transport sector by the VAT. We can also see that the two plots move similar, as VAT is a multiplier.  The gap between the blue line and the red one measures the emissions reductions due to the carbon tax. As the carbon tax rate was increased between 2000 and 2005, the emission reduction becomes larger.
+
+**Andersson calculates an average emission reduction caused by the carbon tax only of $6.3\%$ or $-0.17$ metric tons per capita during the post-treatment period 1990-2005.**
+
+
+## Exercise 5 Conclusion
+
+Let us briefly repeat what we have done and learned in this problem set in which we explored whether the carbon tax in Sweden was an efficient method to reduce CO2 emissions. We started with a descriptive overview where we graphically analysed the gasoline price and its tax elements. We looked at the development of the price elements before and after the energy tax reform in 1990/1991 as well as on gasoline consumption and CO2 emission levels. Afterwards we investigated the effects of the energy tax reform on per capita CO2 emissions from transport. With Differences-in-Differences approach, we found a treatment effect of $-8.3\%$ compared to the OECD sample. Still there were concerns about a biased estimator. Thus, to relax some assumptions made for DID, we introduced the Synthetic Control Method. It found that carbon pricing affected CO2 emissions in Sweden in an average year after 1990 of $-10.9\%$ until 2005. Cumulated and in absolute values Sweden reduced its emissions at $3.2\ million\ tons\ of\ CO2$ in that time. 
+
+We learned that the method that is used to estimate treatment effects has a big impact on the results. For validating the results obtained by SCM we did several placebo tests that verified our conclusions. Additionally, we checked whether the GDP could have been the cause of CO2 emission changes. We finished with some insights in taxes and consumer behaviour. We concluded that the tax rate changes from the reform were fully passed through to the consumers. Also, we learned how consumers respond to tax changes compared to price changes with OLS regression and instrumental variable estimation. One key result is the empirical analysis that consumers responds more to tax changes than to price changes which means that studies that only rely on price elasticities of demand underestimate the causal effect of the carbon tax. Finally, we disentangled the effects of carbon tax and value added tax. Between 1990 and 2005 the carbon tax alone was leading to a reduction of $6.3\%$ anually which means $-0.17\ metric\ tons$ per capita per year. For whole Sweden this means a reduction of $1.5\ million\ metric\ tons$ of CO2. **We can conclude that the carbon tax is significantly associated with reduced CO2 emissions in Sweden.** Still, we did not find evidence, that the carbon tax was harming the economic development in Sweden.
+
+Andersson's study ends in 2005. In 2020, each ton of emitted CO2 costs around $110€$. From 1990 on, the carbon tax rose in multiple small steps. Thus, the Swedish households had time to adapt (cf. Government Offices of Sweden, 2020). Criqui, Jaccard and Sterner stress that the Swedish approach avoided carbon leakage as the industry had time for adjustments. The industry carbon tax level was much lower for a long time and only aligned with the general tax level in 2017 (cf. Criqui, Jaccard and Sterner, 2019, p.7). As well, with the increase of the carbon tax, other taxes were reduced, e. g. the energy tax rate (cf. Ackva and Hoppe, 2018, p.6). Sweden also adapted its taxation procedure on new cars. Before 2006 new cars were taxed based on their weight. After 2006 the carbon dioxide emissions were the basis of calculation (cf. Swedish Tax Agency, 2015, p.26). Antweiler and Gulati remark that vehicle fleets change in the long run of around 15-20 years, as not everyone buys a new car after tax introductions or increases (cf. Antweiler and Gulati, 2016, p.31 f.). Thus, a long-time approach may be important for the success of an environmental taxation strategy. It then can be an efficient method as it gives a clear price signal to consumers and firms. Another important point to reduce emissions, is that CO2 emitters have alternatives tofossil fuels and access to carbon neutral technologies. 2018 Sweden was the country with the third highest market share of electric vehicle sales of $8\%$ (cf. IEA, 2019). As well, from 2015-2018 Sweden invested $2\ billion\ SEK$ in public transport systems and the development of sustainable urban areas that promote cycling and walking and disadvantage personal vehicles (cf. Swedish Environmental Protection Agency, 2005, p. 59). 
+
+Emissions from transport in Sweden decreased until 2005. From 1995 - 2017 the overall greenhouse gas emissions in Sweden were reduced by $25\%$. The economy grew by $75\%$ (cf. International Monetary Fund, 2019). Today more and more countries start to implement some form of carbon pricing. Kossoy et al. show that the overall number of carbon pricing instruments grew by $90\%$ from 2012 - 2015, covering $12\%$ of worldwide greenhouse gas emissions. Still, like in the European ETS, the prices are often below $10 USD$ (cf. Kossoy et al. 2015). Sweden shows that it is possible to reduce CO2 emissions and that carbon taxes can be an important lever. Still, international cooperation is needed to overcome political concerns about competitiveness, so that carbon pricing can realize its full potential on a global scale (cf. Rydge, 2015, p.15)
+
+
+For an overview about what you learned in the problem set, press *check* one more time.
+```{r results='asis'}
+awards(as.html=TRUE)
+```
+
+#< award "You made it through!"
+
+Congratulation! You have finished this problem set and hopefully learned a lot about the carbon tax in Sweden and its effects on CO2 emissions. As well I hope that you were able to require some R programming skills. If you want to solve more problem sets, have a look at <a href="https://github.com/skranz/RTutor" target="_blank">RTutor on Github</a>. 
+#>
+
+
+## Exercise 6 References
+
+### Bibliography
+Abadie, A.; Diamon, D. and Hainmueller, J. (2010): "Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program", Journal of the American Statistical Association, Vol.105, No. 490, p.493-505, DOI:10.1198/jasa.2009/ap08746.
+
+Abadie, A.; Diamond, A. and Hainmueller, J. (2011): "Synth An R Package for Synthetic Control Methods in Comparative Case Studies", Journal of Statistical Software, 42(13): 1-17.
+
+Abadie, A.; Diamond, A. and Hainmueller, J. (2015): "Comparative Politics and the Synthetic COntrol Method", American Journal of Political Sciences, Vol. 59, No. 2, P.495-510, DOI:10.1111/ajps.12116.
+
+Abadie, A. and Gardeazabal, J. (2003): "The Economic Costs of Conflict: A Case Study of the Basque Country", The Amercian Economic Review, Vol.93, No 1., p.113-132, DOI:10.1257/000282803321455188.
+
+Ackva, J. and Hoppe, J. (2018): "The Carbon Tax in Sweden - Fact Sheet", Federal Ministry for the Environment, Nature Conservation and Nuclear Safety (BMU), n. p.
+
+Akerfeldt, S. and Hammar, H. (2015): "CO2 Taxation in Sweden. Experiences of the Past and Future Challenges", Revue Project journal 09/2015.
+
+Andersson, J. (2019): "Carbon Taxes and CO2 Emissions: Sweden as a Case Study", American Economic Journal: Economic Policy, 11(4): 1-30.
+
+Antweiler, W. and Gulati, S. (2016): "Frugal cars or frugal drivers? How carbon and fuel taxes influence the choice and use of cars", Working Paper, Sauder School of Business, The University of British Columbia. DOI:10.2139/ssrn.2778868.
+
+Angrist, J. and Pischke, J. (2015): "Mastering Metrics. The path from cause to effect", Princeton University Press, New Jersey. 
+
+Auer, B. and Rottmann, H. (2010): "Statistik und Ökonometrie für Wirtschaftswissenschaftler. Eine anwendungsorientierte Einführung", Gabler Verlag / Springer Fachmedien, Wiesbaden.
+
+Bertrand, M.; Duflo, E. and Mullainathan, S. (2003): "How much should we trust Differences-in-Differences estimates?", The Quarterly Journal of Economics, MIT Press, 119 (1): 249-275.
+
+Criqui, P.; Jaccard, M. and Sterner, T. (2019): "Carbon Taxation. A Tale of Three Countries", Sustainability 2019, 11, 6280, DOI:10.3390/su11226280
+
+European Commission (2020): Allocation to industrial installationn: https://ec.europa.eu/clima/policies/ets/allowances/industrial_en, accessed 29.07.2020.
+
+Government Offices of Sweden (2020): Sweden`s carbon tax: https://www.government.se/government-policy/taxes-and-tariffs/swedens-carbon-tax/ 15.07.2020
+
+Hill, R. C.; Griffiths, W. E. and Lim, G. C. (2011): "Principles of Econometrics", John Wiley & Sons, Inc., Hoboken.
+
+IEA (2019), Global EV Outlook 2019: https://www.iea.org/reports/global-ev-outlook-2019 25.06.2020
+
+International Monetary Fund (2019), Fiscal Policies to Curb Climate Change, https://blogs.imf.org/2019/10/10/fiscal-policies-to-curb-climate-change/ 25.06.2020
+
+Klößner, S.; Kaul, A.; Pfeifer, G. and Schieler, M. (2018): "Comparative politics and the synthetic control method revisited: a note on Abadie et al. (2015)", Swiss Journal of Economics and Statistisc, 154 11, DOI: 10.1186/s41937-017-0004-9.
+
+Kennedy, P. (2008): "A guide to econometrics 6th edition", Wiley-Blackwell, Malden.
+
+Kossoy, A.; Peszko, G.; Opperman, K. et al. (2015): "State and Trends of Carbon Pricing", The World Bank, Washington.
+
+Li, S.; Linn, J. and Muehlegger, E. (2014): "Gasoline taxes and consumer behavior." American Economic Hournal: Economic Policy 6 (4) p. 302-342. DOI:10.1257/pol.6.4.302.
+
+Murray, M. (2006): "The Bad, the Weak, and the Ugly: Avoiding the Pitfalls of Instrumental Variables Estimation", Bates College, available at http://ssrn.com/abstract=843185.
+
+OECD (2020): "OECD Main Economic Indicators (MEI)", http://www.oecd.org/sdd/oecdmaineconomicindicatorsmei.htm, accessed 29.07.2020.
+
+Parry, I. (2019): "Putting a price on pollution. Carbon-pricing strategies could hold the key to meeting the world's climate stabilization goals", Finance and Development: The economics of climate, 12/2019.
+
+Romer, C. and Romer, D. (2010): "The Macroeconomic Effects of Tax Changes: Estimates Based on a New Measure of Fiscal Shocks", American Economic Review, vol 100(3), p. 763-801, DOI: 10.3386/w13264.
+
+Rydge, J. (2015): "Implementing Effective Carbon Pricing. Contributing paper for Seizing the Global Opportunity: Partnerships for Better Growth and a Better Climate. New Climate Economy, London and Washington.
+
+Stock, J. and Yogo, M. (2005): "Testing for Weak Instruments in Linear IV Regression", Andrews DWK Identification and Incerence for Econometric Models, Cambridge University Press, New York, p. 80-108.
+Verbeek, M. (2012): "A guide to modern econometrics 4th edition",  Wiley, Chichester.
+
+Swedish Environmental Protection Agency (2015): "Sweden's Second Biennial Report under the UNFCCC", n. p.
+
+Swedish Tax Agency (2015): "Taxes in Sweden 2015, An English Summary of Tax Statistical Yearbook of Sweden", Swedish Rax Agency, n. p. 
+
+The Stern Review (2006): "The Stern Review on the Economic Effects of Climate Change. Population and Development Review, 32, doi:10.1111/j.1728-4457.2006.00153.x
+
+The Worldbank (2020): "Economy", http://datatopics.worldbank.org/world-development-indicators/themes/economy.html, accessed 29.07.2020. 
+
+Verbeek, Marno (2012): "A guide to modern Econometrics 4th Edition", John Wiley and Sons Ltd, Chichester. 
+
+Wooldridge, J. (2013): "Introductory Econometrics. A Modern Approach 5th Edition", South-Western CENGAGE Learning, Mason.
+
+
+### Data for GDP
+
+GDP: OECD.stat (2019): Gross domestic product (GDP): GDP per head, US$, constant prices, constant PPPs, reference year 2015, https://stats.oecd.org/index.aspx?queryid=60707#, accessed 29.06.2020.
+
+Inflation rates: The World Bank (2020): Inflation, consumer prices (annual %),  https://data.worldbank.org/indicator/FP.CPI.TOTL.ZG, accessed 29.06.2020.
+
+Investmentrate: The World Bankc (2020): Gross capital formation (% of GDP), https://data.worldbank.org/indicator/NE.GDI.TOTL.ZS, accessed 29.06.2020.
+
+Trade openess: The World Bank (2020): Imports of goods and services (% of GDP), https://data.worldbank.org/indicator/NE.IMP.GNFS.ZS and exports of goods and services (% of GDP) https://data.worldbank.org/indicator/NE.EXP.GNFS.ZS, accessed 30.06.2020.
+
+Schooling: Barro, Robert and Jong-Wha Lee (2013), "A New Data Set of Educational Attainment in the World, 1950-2010)", Journal of Development Economics, vol 104, p. 184-198, http://www.barrolee.com/, accessed 30.06.2020.
+
+
+### R and Packages in R
+Auguie, B. and Antonov, A. (2017): gridExtra. " Miscellaneous Functions for "Grid" Graphics", R package version 2.3 https://cran.r-project.org/web/packages/gridExtra/index.html
+
+Castanho Silva, B. (2019): SCtools. "Extensions for Synthetic Control Analysis", R package version 0.3.0 https://cran.r-project.org/web//packages/SCtools/index.html
+
+
+Gaure, S. (2015): lfe. “Linear Group Fixed Effects”, R package version 2.3-1709 http://cran.r-project.org/web/packages/lfe/index.html
+
+Hainmueller, J. and Diamond, A. (2014): Synth. "Synthetic Control Group Method for Comparative Case Studies", R package version 1.1-5 https://cran.r-project.org/web/packages/Synth/index.html
+
+Hlavac, M. (2015): stargazer. “Well-Formatted Regression and Summary Statistics Tables”, R package version 5.2. http://CRAN.R-project.org/package=stargazer
+
+Hothorn, T. (2019): lmtest. "Testing Linear Regression Models", R package version 0.9-37.https://cran.r-project.org/web/packages/lmtest/index.html
+
+Kleiber, Christian and Zeileis, Achim (2008): AER. “Applied Econometrics with R”, R package version 1.2-4 http://CRAN.R-project.org/package=AER
+
+R Core Team et al. (2020), foreign. " Read Data Stored by 'Minitab', 'S', 'SAS', 'SPSS', 'Stata', 'Systat', 'Weka', 'dBase',...", R package version 0.8-80 https://cran.r-project.org/web/packages/foreign/index.html
+
+Wickham, H. et al. (2020), ggplot2. "Create Elegant Data Visualisations Using the Grammar of Graphics", R package version 3.3.0 https://cran.r-project.org/web/packages/ggplot2/index.html
+
+Wickham, H. et al. (2020b), dplyr. "A Grammar of Data Manipulation", R package version 0.8.5, https://cran.r-project.org/web/packages/dplyr/index.html
+
+Zeileis, A. (2019): sandwich. "Robust Covariance Matrix Estimators", R package version 2.5-1 https://cran.r-project.org/web/packages/sandwich/index.html
+ 
