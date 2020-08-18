@@ -1,4 +1,4 @@
-# RTutorCarbonTaxSweden
+# RTutorCarbonTaxesandCO2Emissions
 R Tutor Problem Set about Swedish carbon tax and CO2 emissions
 This package constitutes an interactive R problem set 
 based on theRTutor package (https://github.com/skranz/RTutor).
@@ -23,7 +23,7 @@ install.packages("RTutor",repos = c("https://skranz-repo.github.io/drat/",getOpt
 if (!require(devtools))
   install.packages("devtools")
 
-devtools::install_github("Theresa Graefe/RTutorCarbonTaxesAndCO2Emissions", upgrade_dependencies=FALSE)
+devtools::install_github("TheresaGraefe/RTutorCarbonTaxesAndCO2Emissions", upgrade_dependencies=FALSE)
 ```
 
 ## 2. Show and work on the problem set
