@@ -71,7 +71,7 @@ Have fun at solving the tasks and at collecting awards.
 
 ## Exercise 1  Descriptive Overview
 
-The data frame used during this exercise is called `descr_Sweden.Rds`. The author originally provides a different file `descriptive_data.dat` (it can be found <a href="https://www.aeaweb.org/articles?id=10.1257/pol.20170144" target="_blank">here</a>). I decided to rename some variables to shorten the code and saved the new file in `Rds` format. Have a look at the R file in the <a href="https://github.com/TheresaGraefe/RTutorCarbonTaxesAndCO2Emissions" target="_blank">Github repository</a> if you are interested in the code of the adaptions.
+The data frame used during this exercise is called `descr_Sweden.Rds`. The author originally provides a different file `descriptive_data.dat` (it can be found <a href="https://www.aeaweb.org/articles?id=10.1257/pol.20170144" target="_blank">here</a>). I decided to rename some variables to shorten the code and saved the new file in `Rds` format. Have a look at the R file in the <a href="https://github.com/TheresaGraefe/RTutorCarbonTax" target="_blank">Github repository</a> if you are interested in the code of the adaptions.
 
 Before we can work with the data, we have to load it.
 Use the `readRDS()` command to load the `descr_Sweden.Rds` file and assign it to the variable `dat`.
