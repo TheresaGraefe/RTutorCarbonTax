@@ -8,7 +8,7 @@ ps.name = "CarbonTaxesAndCO2Emissions"; sol.file = paste0(ps.name,"_sol.Rmd")
 libs = c("ggplot2","dplyr","foreign","lfe","stargazer", "Synth","SCtools","lmtest","sandwich", "gridExtra", "AER")
 # character vector of all packages you load in the problem set
 #name.rmd.chunks(sol.file)
-create.ps(sol.file=sol.file, ps.name=ps.name, libs=libs, rps.has.sol = FALSE, addons = "quiz")
+create.ps(sol.file=sol.file, ps.name=ps.name, libs=libs,addons = "quiz")
 show.ps(ps.name,sample.solution = TRUE)
 ```
 #>
@@ -2080,7 +2080,7 @@ summary(iv2, diagnostics = TRUE)
 #>
 ```
 
-Again, we can see that the main estimator of interest $\hat\beta_2$ stays the same with a value of $-18.6%$. $\hat\beta_1$ even gets a bit larger with $-6.41\%$ instead of $-6.20\%$ in `iv1`. As well we can see, that the weak instrument test`s p-value is very small and it is strongly significant ($***$) at a 0.1% level. So we can strongly reject $H_0$ and assume that the instrument crude oil price has a relevant influence on the price which is good for our analysis. As well the test statistic is well above 10 which indicates that we don't have a weak instrument here. The p-value for the Wu-Hausman test is rather large ($0.705$), so we cannot reject the null hypothesis and we do not find evidence for endogeneity. As we want to obtain robust standard errors as Andersson, we use `coeftest()` in combination with `NeweyWest()`. We also add `OLS4` once more to compare the results with `stargazer(). Press *check* to run the code.
+Again, we can see that the main estimator of interest $\hat\beta_2$ stays the same with a value of $-18.6%$. $\hat\beta_1$ even gets a bit larger with $-6.41\%$ instead of $-6.20\%$ in `iv1`. As well we can see, that the weak instrument test's p-value is very small and it is strongly significant ($***$) at a 0.1% level. So we can strongly reject $H_0$ and assume that the instrument crude oil price has a relevant influence on the price which is good for our analysis. As well the test statistic is well above 10 which indicates that we don't have a weak instrument here. The p-value for the Wu-Hausman test is rather large ($0.705$), so we cannot reject the null hypothesis and we do not find evidence for endogeneity. As we want to obtain robust standard errors as Andersson, we use `coeftest()` in combination with `NeweyWest()`. We also add `OLS4` once more to compare the results with `stargazer(). Press *check* to run the code.
 ```{r results='asis'}
 #< task
 # robust standard errors with energy tax as instrument
